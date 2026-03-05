@@ -1,51 +1,107 @@
-COGNITO.AI концепція
+# Cognito.ai
 
-🧠 Проєкт: COGNITO.AI — Платформа адаптивного менторства
-Категорія: EdTech / AI Implementation / Personal Tutor
-Слоган: Stop asking for answers. Start asking for understanding.
-📝 1. Огляд (Concept Statement)
-Більшість студентів використовують AI як інструмент для копіювання готових рішень, що призводить до втрати критичного мислення. COGNITO.AI — це веб-додаток, який трансформує роль штучного інтелекту з "виконавця" на "сократівського ментора". Замість прямих відповідей система будує індивідуальні освітні треки, стимулюючи студента до самостійного вирішення задач через мікро-теорію, навідні запитання та систему адаптивних підказок.
-🏗️ 2. Ключовий функціонал (MVP)
-2.1. Гнучка вхідна точка (Dual Mode Input)
-• Mode "Topic": Користувач вводить загальну тему (наприклад, "Основи React").
-• Mode "Problem": Користувач вводить конкретну задачу, помилку в коді або завантажує умову вправи.
-2.2. Динамічний Roadmap (Декомпозиція)
-AI не видає всю інформацію одразу. Він розбиває запит на 3-5 логічних кроків (Milestones). Студент бачить вертикальну лінію прогресу, де кожен крок — це окремий навчальний етап.
-2.3. Цикл "Сократівського діалогу"
-Кожен етап (Milestone) складається з:
-• Micro-Theory: Стислий вступ (3-5 речень).
-• Interactive Task: Питання або завдання, яке потребує вводу відповіді.
-• Adaptive Guidance: * Якщо студент відповів швидко — наступне завдання складніше.
-• Якщо помилився — система дає аналогічний приклад для закріплення.
-• Tiered Hints (Система підказок): Три рівні підказок, кожна з яких коштує "зірок" рейтингу (від концептуального натяку до майже прямої поради).
-2.4. Semantic Reflection (Фінальний крок)
-Урок вважається завершеним лише після того, як студент пояснить головну концепцію своїми словами. AI аналізує зміст пояснення та підтверджує засвоєння.
-🌊 3. Шлях користувача (User Flow)
-1. Авторизація: Швидкий вхід через Google (Firebase Auth).
-2. Запит: Введення теми або задачі в центральне поле пошуку.
-3. Шлях: Перегляд згенерованого Roadmap. Натискання "Почати".
-4. Діалог: Читання теорії -> Введення відповіді -> Робота з підказками (за потреби).
-5. Завершення: Фінальна рефлексія, отримання зірок (⭐) та збереження прогресу.
-6. Архів: Повернення до пройденого матеріалу через особисту бібліотеку.
-📊 4. Особиста бібліотека та "Smart Skill Matrix"
-Прагматичний дашборд:
-• Бібліотека діалогів: Список усіх пройдених уроків. Можна відкрити "заморожений" діалог, щоб побачити свій шлях роздумів.
-• Матриця навичок (Skill Matrix): Візуалізація прогресу за категоріями (Програмування, Математика, Мови тощо) у вигляді прогрес-барів.
-• Re-challenge: Можливість пройти старий урок заново з іншими питаннями для боротьби із забуванням.
-🛠️ 5. Технологічний стек (Tech Stack)
-• Frontend: Next.js, Tailwind CSS.
-• Backend: Firebase (Firestore — база даних, Auth — авторизація).
-• AI Engine: OpenAI API (модель gpt-4o-mini для балансу швидкості та вартості).
-• Logic: JSON-парсинг відповідей AI для динамічного створення інтерфейсу Roadmap.
-🎨 6. Дизайн та Інтерфейс (UI/UX)
-• Стиль: "Clean & Focused" — мінімалізм, багато вільного простору, спокійна палітра.
-• Learning Workspace: Розділений екран. Справа — чат з ментором, зліва— інтерактивні картки з теорією. На телефоні частина з теорією відображається як маленьке вікно зверху, на яке треба натиснути, щоб воно відкрилося, а основне вікно - чат з ментором.
-• Гейміфікація:
-• Stars Rating: Оцінка за урок (залежить від кількості використаних підказок).
-• Focus Streak: Кількість днів навчання поспіль.
-• Cognito Score: Загальний бал досвіду.
-📅 7. План реалізації (3 місяці)
-1. Місяць 1 (Core): Прототип у Figma, налаштування Firebase, розробка системного промпту для AI-ментора.
-2. Місяць 2 (Logic): Створення Roadmap-генератора, системи адаптивних питань та рівневих підказок.
-3. Місяць 3 (Product): Реалізація Бібліотеки та Матриці навичок, тестування на фокус-групі студентів, презентація.
+An adaptive, metacognitive learning platform that replaces direct answer-giving with Socratic, scaffolded tutoring. The goal is to help university students build real understanding by guiding them through structured roadmaps, micro-theory, and tiered hints.
 
+## Product Vision
+
+- Prevent AI-dependency by never giving direct answers.
+- Decompose complex topics into a 5-module learning roadmap.
+- Persist progress across lessons, including XP, stars, and lesson state.
+
+## MVP Scope
+
+- Google authentication via Firebase Auth and backend session exchange.
+- Topic decomposition into exactly 5 modules with outcomes.
+- Socratic lesson flow: micro-theory, 3 difficulty questions, tiered hints.
+- Personal Insight Hub (Library) to resume progress.
+- Progress persistence to a relational database.
+
+## User Flow
+
+1. Sign in with Google.
+2. Enter a topic or a specific problem.
+3. Review the generated roadmap and start a module.
+4. Work through micro-theory and guided questions with hints.
+5. Finish with reflection and save progress to the library.
+
+## Experience Principles
+
+- The AI mentor asks questions and never provides final answers.
+- Hints consume stars and update state immediately.
+- Clear loading, empty, and error states across lists and lessons.
+
+## UI Layout Summary
+
+- Insight Hub: topic/problem toggle, search bar with mic and upload icons, recent journeys.
+- Interaction Screen: split layout with micro-theory on the left and chat on the right.
+- Dashboard: progress overview and lesson tracking, accessible from the sidebar.
+- Sidebar: Gemini-style navigation with search, toolbar, and recent journeys.
+- Mobile: sidebar hidden by default and stacked theory + chat panels.
+
+## Architecture Overview
+
+The learning flow is managed by a LangGraph state machine, where each skill is a node that reads and updates shared state.
+
+- `Decomposer`: generates a 5-module roadmap.
+- `Lesson_Generator`: produces micro-theory and 3 questions (easy, medium, hard).
+- `Socratic_Tutor`: evaluates responses and provides guiding questions or hints.
+- `Progress_Updater`: persists XP, stars, and lesson state through the backend API.
+
+## API Contracts (Backend)
+
+- `POST /api/auth/firebase-login`: exchange Firebase ID token for backend session.
+- `GET /api/roadmaps`: list roadmaps for the user.
+- `POST /api/roadmaps`: create a roadmap for a topic.
+- `GET /api/roadmaps/{roadmap_id}`: roadmap detail and progress.
+- `GET /api/lessons/{lesson_id}`: fetch micro-theory and question set.
+- `POST /api/lessons/{lesson_id}/answer`: submit answers and get next prompt.
+- `POST /api/lessons/{lesson_id}/hint`: request a hint and update stars.
+- `GET /api/dashboard`: progress summaries and streak info.
+
+See [docs/api-contracts.md](docs/api-contracts.md) for request/response payloads.
+
+## Data Model (Summary)
+
+- Users, roadmaps, modules, lessons, questions.
+- Lesson state and question attempts with hint usage and XP tracking.
+
+See [docs/data-schema.md](docs/data-schema.md) for full schema details.
+
+## Tech Stack
+
+- Frontend: Next.js App Router + Tailwind CSS.
+- Backend: Django REST Framework.
+- Auth: Firebase Auth (Google OAuth).
+- Database: PostgreSQL.
+- Orchestration: LangGraph.
+- AI Engine: OpenAI API (gpt-4o-mini).
+
+## Repository Conventions
+
+- Use the Next.js App Router under `app/`.
+- Global styles live in `app/globals.css` only.
+- Avoid barrel imports; import from concrete module paths.
+- Prefer server components; isolate client state with `"use client"`.
+
+See [docs/implementation-rules.md](docs/implementation-rules.md) for full rules.
+
+## Getting Started
+
+Install dependencies and run the development server:
+
+```bash
+npm install
+npm run dev
+```
+
+Open http://localhost:3000 to view the app.
+
+## Documentation Index
+
+- [Product Requirements](docs/PRD.md)
+- [Design Brief](docs/design-brief.md)
+- [UI/UX Guidelines](docs/ui-ux-guidelines.md)
+- [API Contracts](docs/api-contracts.md)
+- [Data Schema](docs/data-schema.md)
+- [Implementation Rules](docs/implementation-rules.md)
+- [Agent Skills Spec](docs/agent-skills-spec.md)
