@@ -13,7 +13,7 @@
 - Stack: Next.js App Router, Tailwind, Django REST, PostgreSQL, Firebase Auth, OpenAI via LangGraph.
 - API contracts in docs/api-contracts.md are the source of truth.
 
-## Sprint 2 (Feb 27 - Mar 5, 2026) - Auth + Login MVP
+## Sprint 2 (Feb 27 - Mar 5, 2026) - Auth + Login MVP (Missed)
 
 ### Goals
 
@@ -51,10 +51,11 @@
 - Auth endpoint returns session token + user payload.
 - Error handling and accessibility pass.
 
-## Sprint 3a (Mar 6 - Mar 12, 2026) - Insight Hub + Roadmaps MVP (Core)
+## Sprint 3a (Mar 6 - Mar 12, 2026) - Auth + Insight Hub + Roadmaps Core
 
 ### Goals
 
+- Minimal auth + session flow working in dev.
 - Insight Hub (Library) page and data flow (basic layout).
 - Roadmap creation and retrieval endpoints with per-user auth.
 - End-to-end flow works with a placeholder 5-module response.
@@ -66,23 +67,32 @@
 
 ### Frontend Developer
 
+- Implement login page UI (minimal) and wire Google sign-in.
+- Integrate POST /api/auth/firebase-login.
+- Add basic auth state storage (session token) for API requests.
 - Build Insight Hub page (server components by default).
 - Integrate GET /api/roadmaps and POST /api/roadmaps.
 - Add basic sidebar/header navigation per design brief.
 
 ### Backend Developer
 
+- Implement POST /api/auth/firebase-login (per api-contracts.md).
+- Validate Firebase ID token and create session token.
+- Add user profile model linkage (Firebase UID -> local user).
 - Implement Roadmap models and endpoints (GET/POST /api/roadmaps).
 - Enforce per-user authorization.
 - Persist roadmap + module list.
 
 ### Backend/AI Engineer
 
+- Provide Firebase token verification helper (shared with backend dev).
+- Define initial user schema fields (email, name, uid) if needed.
 - Define the roadmap module output shape and field validation rules.
 - Provide a temporary fixed 5-module response for dev.
 
 ### Deliverables
 
+- Users can log in and maintain a session in dev.
 - Users can create and view roadmaps.
 - Roadmap data persisted and authorized.
 - UI and API flow demoable without AI.
@@ -93,6 +103,7 @@
 
 - AI-powered roadmap generation.
 - UI polish for Insight Hub components.
+- Finish deferred auth tests and UI polish.
 
 ### Designer
 
@@ -103,11 +114,13 @@
 
 - Polish Insight Hub components and empty states.
 - Hook up roadmap creation to AI-generated modules when available.
+- Improve login UI states and loading/error handling.
 
 ### Backend Developer
 
 - Add validations and error handling for roadmap creation requests.
 - Ensure module list persistence and response shape match contracts.
+- Add tests for token verification and auth error cases.
 
 ### Backend/AI Engineer
 
