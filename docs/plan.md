@@ -10,14 +10,14 @@
 ## Assumptions
 
 - Sprints are 1 week (Friday to Thursday). Immediate plan covers the next 2 days.
-- Stack: Next.js App Router, Tailwind, Django REST, PostgreSQL, Firebase Auth, OpenAI via LangGraph.
+- Stack: Next.js App Router, Tailwind, Django REST, PostgreSQL, Firebase Auth (Google OAuth) + Django password auth, OpenAI via LangGraph.
 - API contracts in docs/api-contracts.md are the source of truth.
 
 ## Sprint 2 (Feb 27 - Mar 5, 2026) - Auth + Login MVP (Missed)
 
 ### Goals
 
-- Login UI integrated with Google Auth.
+- Login UI integrated with Google Auth and email/password.
 - Backend session exchange endpoint live and tested.
 - End-to-end login flow working in dev.
 
@@ -25,20 +25,25 @@
 
 - Finalize login page specs (states: idle, loading, error).
 - Provide hover/focus/accessibility notes for the Google sign-in button.
+- Provide states/specs for email/password fields and error copy.
 
 ### Frontend Developer
 
-- Implement login page UI (in progress) and wire Google sign-in.
-- Integrate POST /api/auth/firebase-login.
+- Implement login page UI (in progress) and wire Google sign-in and email/password.
+- Integrate POST /api/auth/firebase-login and POST /api/auth/login.
+- Add registration UI and wire POST /api/auth/register.
 - Handle error states and loading indicator.
 - Add basic auth state storage (session token) for API requests.
 
 ### Backend Developer
 
 - Implement POST /api/auth/firebase-login (per api-contracts.md).
+- Implement POST /api/auth/login and POST /api/auth/register.
 - Validate Firebase ID token and create session token.
+- Validate email/password and create session token.
 - Add user profile model linkage (Firebase UID -> local user).
 - Add tests for token verification and error cases.
+- Add tests for password auth and registration errors.
 
 ### Backend/AI Engineer
 
@@ -55,7 +60,7 @@
 
 ### Goals
 
-- Minimal auth + session flow working in dev.
+- Minimal auth + session flow working in dev (Google + email/password).
 - Insight Hub (Library) page and data flow (basic layout).
 - Roadmap creation and retrieval endpoints with per-user auth.
 - End-to-end flow works with a placeholder 5-module response.
@@ -67,8 +72,9 @@
 
 ### Frontend Developer
 
-- Implement login page UI (minimal) and wire Google sign-in.
-- Integrate POST /api/auth/firebase-login.
+- Implement login page UI (minimal) and wire Google sign-in and email/password.
+- Integrate POST /api/auth/firebase-login and POST /api/auth/login.
+- Add registration UI and wire POST /api/auth/register.
 - Add basic auth state storage (session token) for API requests.
 - Build Insight Hub page (server components by default).
 - Integrate GET /api/roadmaps and POST /api/roadmaps.
@@ -77,7 +83,9 @@
 ### Backend Developer
 
 - Implement POST /api/auth/firebase-login (per api-contracts.md).
+- Implement POST /api/auth/login and POST /api/auth/register.
 - Validate Firebase ID token and create session token.
+- Validate email/password and create session token.
 - Add user profile model linkage (Firebase UID -> local user).
 - Implement Roadmap models and endpoints (GET/POST /api/roadmaps).
 - Enforce per-user authorization.

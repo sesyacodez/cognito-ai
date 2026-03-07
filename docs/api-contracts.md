@@ -2,16 +2,70 @@
 
 ## Auth
 
+### POST /api/auth/register
+
+- Purpose: create a local Django user with email/password and return a session.
+- Request:
+
+```
+{
+  "email": "string",
+  "password": "string",
+  "name": "string"
+}
+```
+
+- Response:
+
+```
+{
+  "session_token": "string",
+  "user": {
+    "id": "string",
+    "email": "string",
+    "name": "string"
+  }
+}
+```
+
+### POST /api/auth/login
+
+- Purpose: exchange email/password for backend session.
+- Request:
+
+```
+{
+  "email": "string",
+  "password": "string"
+}
+```
+
+- Response:
+
+```
+{
+  "session_token": "string",
+  "user": {
+    "id": "string",
+    "email": "string",
+    "name": "string"
+  }
+}
+```
+
 ### POST /api/auth/firebase-login
 
 - Purpose: exchange Firebase ID token for backend session.
 - Request:
+
 ```
 {
   "id_token": "string"
 }
 ```
+
 - Response:
+
 ```
 {
   "session_token": "string",
@@ -32,12 +86,15 @@
 ### POST /api/roadmaps
 
 - Request:
+
 ```
 {
   "topic": "string"
 }
 ```
+
 - Response:
+
 ```
 {
   "roadmap_id": "string",
@@ -60,13 +117,16 @@
 ### POST /api/lessons/{lesson_id}/answer
 
 - Request:
+
 ```
 {
   "question_id": "string",
   "answer": "string"
 }
 ```
+
 - Response:
+
 ```
 {
   "correct": true,
@@ -82,13 +142,16 @@
 ### POST /api/lessons/{lesson_id}/hint
 
 - Request:
+
 ```
 {
   "question_id": "string",
   "hint_level": 1
 }
 ```
+
 - Response:
+
 ```
 {
   "hint": "string",

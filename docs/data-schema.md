@@ -3,7 +3,9 @@
 ## users
 
 - id: uuid, primary key
-- firebase_uid: string, unique
+- firebase_uid: string, unique, nullable
+- auth_provider: string (firebase | password)
+- password_hash: string, nullable
 - email: string
 - name: string
 - created_at: timestamp

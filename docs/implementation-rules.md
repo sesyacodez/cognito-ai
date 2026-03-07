@@ -40,7 +40,9 @@ Deliver a Next.js App Router frontend and Django REST backend that enforce Socra
 ## Security and Privacy
 
 - Validate Firebase ID tokens on the backend for every session exchange.
+- Validate email/password credentials on the backend for every login.
 - Never expose raw Firebase tokens to client logs.
+- Never log or return raw passwords.
 - Enforce per-user authorization on roadmaps and lesson states.
 
 ## Accessibility

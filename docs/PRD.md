@@ -26,13 +26,13 @@ Cognito.ai is an adaptive, metacognitive learning platform that prevents "AI-dep
 
 ### Success Criteria (MVP)
 
-- Users can authenticate via Google and access personalized roadmaps.
+- Users can authenticate via Google or email/password and access personalized roadmaps.
 - Each topic is decomposed into 5 modules with interactive lessons.
 - Progress (XP, stars, lesson state) is saved and restored accurately.
 
 ## 4. Core Features (MVP)
 
-- Google Authentication: Secure login via Firebase Auth, integrated with the Django backend for session management.
+- Dual Authentication: Secure login via Firebase Auth (Google OAuth) and Django email/password, integrated with the Django backend for session management.
 - Smart Topic Decomposition: A "Decomposer" agent skill that analyzes broad topics and generates a 5-module learning roadmap.
 - Socratic Learning Nodes: Interactive lesson modules consisting of brief theory, 3-tier difficulty questions, and a tiered hint system.
 - Personal Insight Hub (Library): A dashboard where users can view their generated roadmaps, track progress, and resume saved lessons.
@@ -40,14 +40,14 @@ Cognito.ai is an adaptive, metacognitive learning platform that prevents "AI-dep
 
 ## 5. Technical Stack
 
-| Component      | Technology                      |
-| -------------- | ------------------------------- |
-| Frontend       | React.js + Tailwind CSS         |
-| Backend        | Django (Python)                 |
-| Authentication | Firebase Auth (Google OAuth)    |
-| Database       | PostgreSQL                      |
-| Orchestration  | LangGraph (agent state machine) |
-| AI Engine      | OpenAI API (GPT-4o-mini)        |
+| Component      | Technology                                          |
+| -------------- | --------------------------------------------------- |
+| Frontend       | React.js + Tailwind CSS                             |
+| Backend        | Django (Python)                                     |
+| Authentication | Firebase Auth (Google OAuth) + Django password auth |
+| Database       | PostgreSQL                                          |
+| Orchestration  | LangGraph (agent state machine)                     |
+| AI Engine      | OpenAI API (GPT-4o-mini)                            |
 
 ## 6. System Architecture and Agent Skills (CAI-19/20)
 
@@ -60,7 +60,7 @@ The project uses LangGraph to manage the learning flow as a state machine. Each 
 
 ## 7. Page-by-Page Requirements
 
-- Auth Page (CAI-11, 18): Minimalist landing with a "Sign in with Google" trigger. Django verifies the Firebase ID token.
+- Auth Page (CAI-11, 18): Minimalist landing with "Sign in with Google" and email/password fields. Django verifies the Firebase ID token or validates email/password.
 - Insight Hub / Dashboard (CAI-12, 15): Displays active roadmaps and a search bar for new topics. Fetches data from Django REST Framework.
 - Learning Workspace (CAI-14): A vertical scrolling interface showing theory blocks, question cards, and the "Hint" trigger.
 - Sidebar and Header (CAI-16): Global navigation for switching between the Library, Profile, and Settings.
