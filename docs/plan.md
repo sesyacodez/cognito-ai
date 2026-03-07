@@ -9,11 +9,11 @@
 
 ## Assumptions
 
-- Sprints are 1 week. Immediate plan covers the next 2 days.
+- Sprints are 1 week (Friday to Thursday). Immediate plan covers the next 2 days.
 - Stack: Next.js App Router, Tailwind, Django REST, PostgreSQL, Firebase Auth, OpenAI via LangGraph.
 - API contracts in docs/api-contracts.md are the source of truth.
 
-## Sprint 2 (Next 2 Days) - Auth + Login MVP
+## Sprint 2 (Feb 27 - Mar 5, 2026) - Auth + Login MVP
 
 ### Goals
 
@@ -51,12 +51,13 @@
 - Auth endpoint returns session token + user payload.
 - Error handling and accessibility pass.
 
-## Sprint 3 - Insight Hub + Roadmaps MVP
+## Sprint 3a (Mar 6 - Mar 12, 2026) - Insight Hub + Roadmaps MVP (Core)
 
 ### Goals
 
-- Insight Hub (Library) page and data flow.
-- Roadmap creation and retrieval endpoints.
+- Insight Hub (Library) page and data flow (basic layout).
+- Roadmap creation and retrieval endpoints with per-user auth.
+- End-to-end flow works with a placeholder 5-module response.
 
 ### Designer
 
@@ -67,7 +68,7 @@
 
 - Build Insight Hub page (server components by default).
 - Integrate GET /api/roadmaps and POST /api/roadmaps.
-- Add sidebar/header navigation per design brief.
+- Add basic sidebar/header navigation per design brief.
 
 ### Backend Developer
 
@@ -77,16 +78,49 @@
 
 ### Backend/AI Engineer
 
+- Define the roadmap module output shape and field validation rules.
+- Provide a temporary fixed 5-module response for dev.
+
+### Deliverables
+
+- Users can create and view roadmaps.
+- Roadmap data persisted and authorized.
+- UI and API flow demoable without AI.
+
+## Sprint 3b (Mar 13 - Mar 19, 2026) - Decomposer + UX Polish
+
+### Goals
+
+- AI-powered roadmap generation.
+- UI polish for Insight Hub components.
+
+### Designer
+
+- Finalize component specs for search bar, recent journeys, and sidebar.
+- Provide motion and empty-state guidance for Insight Hub.
+
+### Frontend Developer
+
+- Polish Insight Hub components and empty states.
+- Hook up roadmap creation to AI-generated modules when available.
+
+### Backend Developer
+
+- Add validations and error handling for roadmap creation requests.
+- Ensure module list persistence and response shape match contracts.
+
+### Backend/AI Engineer
+
 - Implement Decomposer skill (LangGraph node) returning 5 modules.
 - Wire Decomposer to POST /api/roadmaps.
 - Add validations and retries for AI output shape.
 
 ### Deliverables
 
-- Users can create and view roadmaps.
-- Roadmap data persisted and authorized.
+- Roadmaps generated via AI in dev.
+- Insight Hub UI polished and consistent.
 
-## Sprint 4 - Learning Workspace + Lesson Flow
+## Sprint 4 (Mar 20 - Mar 26, 2026) - Learning Workspace + Lesson Flow
 
 ### Goals
 
@@ -123,7 +157,7 @@
 - Users can go through a lesson, answer questions, request hints.
 - Progress updates saved and restored.
 
-## Sprint 5 - Dashboard + Progress + Polish
+## Sprint 5 (Mar 27 - Apr 2, 2026) - Dashboard + Progress + Polish
 
 ### Goals
 
