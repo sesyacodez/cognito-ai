@@ -1,0 +1,166 @@
+# Implementation Plan (Sprint-Based)
+
+## Team
+
+- Designer
+- Backend/AI Engineer
+- Backend Developer
+- Frontend Developer
+
+## Assumptions
+
+- Sprints are 1 week. Immediate plan covers the next 2 days.
+- Stack: Next.js App Router, Tailwind, Django REST, PostgreSQL, Firebase Auth, OpenAI via LangGraph.
+- API contracts in docs/api-contracts.md are the source of truth.
+
+## Sprint 2 (Next 2 Days) - Auth + Login MVP
+
+### Goals
+
+- Login UI integrated with Google Auth.
+- Backend session exchange endpoint live and tested.
+- End-to-end login flow working in dev.
+
+### Designer
+
+- Finalize login page specs (states: idle, loading, error).
+- Provide hover/focus/accessibility notes for the Google sign-in button.
+
+### Frontend Developer
+
+- Implement login page UI (in progress) and wire Google sign-in.
+- Integrate POST /api/auth/firebase-login.
+- Handle error states and loading indicator.
+- Add basic auth state storage (session token) for API requests.
+
+### Backend Developer
+
+- Implement POST /api/auth/firebase-login (per api-contracts.md).
+- Validate Firebase ID token and create session token.
+- Add user profile model linkage (Firebase UID -> local user).
+- Add tests for token verification and error cases.
+
+### Backend/AI Engineer
+
+- Provide Firebase token verification helper (shared with backend dev).
+- Define initial user schema fields (email, name, uid) if needed.
+
+### Deliverables
+
+- Login page functional in dev.
+- Auth endpoint returns session token + user payload.
+- Error handling and accessibility pass.
+
+## Sprint 3 - Insight Hub + Roadmaps MVP
+
+### Goals
+
+- Insight Hub (Library) page and data flow.
+- Roadmap creation and retrieval endpoints.
+
+### Designer
+
+- Finalize Insight Hub layout and empty state.
+- Provide component specs for search bar, recent journeys, and sidebar.
+
+### Frontend Developer
+
+- Build Insight Hub page (server components by default).
+- Integrate GET /api/roadmaps and POST /api/roadmaps.
+- Add sidebar/header navigation per design brief.
+
+### Backend Developer
+
+- Implement Roadmap models and endpoints (GET/POST /api/roadmaps).
+- Enforce per-user authorization.
+- Persist roadmap + module list.
+
+### Backend/AI Engineer
+
+- Implement Decomposer skill (LangGraph node) returning 5 modules.
+- Wire Decomposer to POST /api/roadmaps.
+- Add validations and retries for AI output shape.
+
+### Deliverables
+
+- Users can create and view roadmaps.
+- Roadmap data persisted and authorized.
+
+## Sprint 4 - Learning Workspace + Lesson Flow
+
+### Goals
+
+- Learning workspace UI with theory + Socratic chat.
+- Lesson fetch, answer, and hint endpoints.
+
+### Designer
+
+- Finalize Interaction Screen layout (split view + hint controls).
+- Provide mobile stacked layout rules.
+
+### Frontend Developer
+
+- Build Learning Workspace page and components.
+- Integrate GET /api/lessons/{lesson_id}.
+- Implement answer + hint flows with optimistic UI.
+
+### Backend Developer
+
+- Implement lesson models and endpoints:
+  - GET /api/lessons/{lesson_id}
+  - POST /api/lessons/{lesson_id}/answer
+  - POST /api/lessons/{lesson_id}/hint
+- Persist lesson state and progress updates.
+
+### Backend/AI Engineer
+
+- Implement Lesson_Generator and Socratic_Tutor nodes.
+- Ensure tiered hints and difficulty levels match contract.
+- Provide evaluation logic for answers and transitions.
+
+### Deliverables
+
+- Users can go through a lesson, answer questions, request hints.
+- Progress updates saved and restored.
+
+## Sprint 5 - Dashboard + Progress + Polish
+
+### Goals
+
+- Dashboard page with progress summaries.
+- End-to-end progress persistence and UI polish.
+
+### Designer
+
+- Finalize Dashboard (Vercel v0 style) components and charts.
+- Provide motion/stagger guidance for page load.
+
+### Frontend Developer
+
+- Build Dashboard page and integrate GET /api/dashboard.
+- Add progress displays (XP, stars, streak).
+- Accessibility audit and focus states.
+
+### Backend Developer
+
+- Implement /api/dashboard aggregation endpoint.
+- Ensure data schema documented in docs/data-schema.md.
+- Add integration tests for progress persistence.
+
+### Backend/AI Engineer
+
+- Implement Progress_Updater node and ensure consistent XP/stars.
+- Add safety checks for lesson state transitions.
+
+### Deliverables
+
+- Dashboard and progress tracking complete.
+- Data schema and API contracts updated.
+
+## Cross-Sprint Checklist
+
+- Update docs/api-contracts.md for any new fields.
+- Document schema changes in docs/data-schema.md.
+- Keep server components for data fetching; avoid client duplication.
+- Verify accessibility: focus states, labels, aria-labels.
+- Add basic e2e smoke tests for auth + roadmap + lesson flow.
