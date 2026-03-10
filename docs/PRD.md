@@ -45,18 +45,17 @@ Cognito.ai is an adaptive, metacognitive learning platform that prevents "AI-dep
 | Frontend       | React.js + Tailwind CSS                             |
 | Backend        | Django (Python)                                     |
 | Authentication | Firebase Auth (Google OAuth) + Django password auth |
-| Database       | PostgreSQL                                          |
-| Orchestration  | LangGraph (agent state machine)                     |
-| AI Engine      | OpenAI API (GPT-4o-mini)                            |
+| Database       | Supabase Postgres                                   |
+| AI Agent       | Nanoclaw (via OpenRouter)                            |
 
 ## 6. System Architecture and Agent Skills (CAI-19/20)
 
-The project uses LangGraph to manage the learning flow as a state machine. Each "skill" is a node in the graph:
+The project uses a Nanoclaw agent (provisioned via OpenRouter) to manage the learning flow. Instead of prompt-engineering raw API calls, the backend equips the agent with discrete skills that it invokes autonomously based on context:
 
 - Decomposer: Analyzes the input topic and returns a structured JSON roadmap.
 - Lesson_Generator: Generates theory and questions for a specific subtopic.
 - Socratic_Tutor: Evaluates student input and decides whether to provide a hint or advance the user.
-- Progress_Updater: Updates the PostgreSQL database with the user's latest performance stats.
+- Progress_Updater: Updates the Supabase Postgres database with the user's latest performance stats.
 
 ## 7. Page-by-Page Requirements
 
@@ -65,7 +64,7 @@ The project uses LangGraph to manage the learning flow as a state machine. Each 
 - Learning Workspace (CAI-14): A vertical scrolling interface showing theory blocks, question cards, and the "Hint" trigger.
 - Sidebar and Header (CAI-16): Global navigation for switching between the Library, Profile, and Settings.
 
-## 8. Data Schema (PostgreSQL via Django ORM)
+## 8. Data Schema (Supabase Postgres via Django ORM)
 
 - User Profile: Links Firebase UID to local user data.
 - Roadmap: Stores the overarching topic and the 5 generated subtopic modules.

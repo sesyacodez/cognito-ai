@@ -2,7 +2,7 @@
 
 ## Goals
 
-Deliver a Next.js App Router frontend and Django REST backend that enforce Socratic learning, keep performance high, and persist learner progress with reliable data contracts.
+Deliver a Next.js App Router frontend and Django REST backend that enforce Socratic learning, keep performance high, and persist learner progress with reliable data contracts. Use Supabase Postgres for persistence and a Nanoclaw agent (via OpenRouter) for AI-driven learning flows.
 
 ## Repository Conventions
 
@@ -31,6 +31,13 @@ Deliver a Next.js App Router frontend and Django REST backend that enforce Socra
 - Use server actions or API routes for mutations that need auth.
 - Cache read-heavy server data with React.cache() when safe.
 - Do not fetch the same data both in server and client for the same view.
+
+## Database and Infra (Supabase)
+
+- Use Supabase Postgres as the primary database for Django.
+- Configure DB via `DATABASE_URL` (preferred) with `sslmode=require` in production.
+- Run standard Django migrations against Supabase; avoid manual SQL edits to schema.
+- Keep DB credentials and Supabase keys in environment variables only; never ship service role keys to the client.
 
 ## State Management
 

@@ -10,7 +10,7 @@
 ## Assumptions
 
 - Sprints are 1 week (Friday to Thursday). Immediate plan covers the next 2 days.
-- Stack: Next.js App Router, Tailwind, Django REST, PostgreSQL, Firebase Auth (Google OAuth) + Django password auth, OpenAI via LangGraph.
+- Stack: Next.js App Router, Tailwind, Django REST, Supabase Postgres, Firebase Auth (Google OAuth) + Django password auth, Nanoclaw agent (via OpenRouter).
 - API contracts in docs/api-contracts.md are the source of truth.
 
 ## Sprint 2 (Feb 27 - Mar 5, 2026) - Auth + Login MVP (Missed)
@@ -132,7 +132,7 @@
 
 ### Backend/AI Engineer
 
-- Implement Decomposer skill (LangGraph node) returning 5 modules.
+- Implement Decomposer skill (Nanoclaw agent skill) returning 5 modules.
 - Wire Decomposer to POST /api/roadmaps.
 - Add validations and retries for AI output shape.
 
@@ -169,7 +169,7 @@
 
 ### Backend/AI Engineer
 
-- Implement Lesson_Generator and Socratic_Tutor nodes.
+- Implement Lesson_Generator and Socratic_Tutor skills for the Nanoclaw agent.
 - Ensure tiered hints and difficulty levels match contract.
 - Provide evaluation logic for answers and transitions.
 
@@ -204,7 +204,7 @@
 
 ### Backend/AI Engineer
 
-- Implement Progress_Updater node and ensure consistent XP/stars.
+- Implement Progress_Updater skill for the Nanoclaw agent and ensure consistent XP/stars.
 - Add safety checks for lesson state transitions.
 
 ### Deliverables

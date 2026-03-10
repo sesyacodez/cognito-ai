@@ -2,7 +2,7 @@
 
 ## Overview
 
-The learning flow is implemented as a LangGraph state machine. Each skill is a node that reads and updates a shared state object.
+The learning flow is driven by a Nanoclaw agent provisioned via OpenRouter. Instead of prompt-engineering raw LLM API calls, the backend creates a Nanoclaw agent and equips it with the skills listed below. The agent autonomously selects and invokes the appropriate skill based on context, reading and updating a shared state object.
 
 ## Shared State Shape
 
@@ -57,8 +57,7 @@ The learning flow is implemented as a LangGraph state machine. Each skill is a n
 
 - Input: correctness signal, hint usage, and timing.
 - Output: updated XP, stars, and lesson state.
-- Constraints: persist updates to the database through the backend API.
-
+- Constraints: persist updates to Supabase Postgres through the backend API.
 ## Safety and Reliability
 
 - If the student requests direct answers, respond with a guiding question.

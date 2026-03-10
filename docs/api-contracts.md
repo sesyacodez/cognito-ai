@@ -1,5 +1,7 @@
 # API Contracts
 
+These contracts assume a Django REST backend with Supabase (Postgres) as the database and a Nanoclaw agent (via OpenRouter) as the AI engine.
+
 ## Auth
 
 ### POST /api/auth/register

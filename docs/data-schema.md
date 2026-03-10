@@ -1,5 +1,7 @@
 # Data Schema
 
+Schema targets Supabase Postgres (managed Postgres).
+
 ## users
 
 - id: uuid, primary key

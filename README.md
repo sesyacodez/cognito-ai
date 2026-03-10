@@ -40,7 +40,7 @@ An adaptive, metacognitive learning platform that replaces direct answer-giving 
 
 ## Architecture Overview
 
-The learning flow is managed by a LangGraph state machine, where each skill is a node that reads and updates shared state.
+The learning flow is driven by a Nanoclaw agent (via OpenRouter). Instead of prompt-engineering raw API calls, the backend provisions a Nanoclaw agent and equips it with discrete skills that it invokes autonomously.
 
 - `Decomposer`: generates a 5-module roadmap.
 - `Lesson_Generator`: produces micro-theory and 3 questions (easy, medium, hard).
@@ -73,8 +73,7 @@ See [docs/data-schema.md](docs/data-schema.md) for full schema details.
 - Backend: Django REST Framework.
 - Auth: Firebase Auth (Google OAuth).
 - Database: PostgreSQL.
-- Orchestration: LangGraph.
-- AI Engine: OpenAI API (gpt-4o-mini).
+- AI Agent: Nanoclaw (via OpenRouter).
 
 ## Repository Conventions
 
