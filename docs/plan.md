@@ -93,10 +93,17 @@
 
 ### Backend/AI Engineer
 
-- Provide Firebase token verification helper (shared with backend dev).
-- Define initial user schema fields (email, name, uid) if needed.
-- Define the roadmap module output shape and field validation rules.
-- Provide a temporary fixed 5-module response for dev.
+- Scaffold minimal Django project in backend/ (manage.py, config/, apps/users, apps/roadmaps, requirements.txt, .env.example).
+- Provide Firebase token verification helper (backend/utils/firebase_auth.py, shared with backend dev).
+- Wire temporary auth stubs (POST /api/auth/register, /api/auth/login, /api/auth/firebase-login) so frontend auth integration can proceed while backend implementation is pending.
+- Define initial user schema fields (email, name, uid) - already complete in docs/data-schema.md.
+- Define the roadmap module output shape and field validation rules (backend/utils/validators.py with Pydantic models). Includes order->index normalizer.
+- Provide a temporary fixed 5-module response for dev (backend/utils/fixtures.py).
+- Wire stub endpoints (GET and POST /api/roadmaps) so frontend dev can integrate without waiting for backend dev. Add CORS for Next.js dev server.
+- Add unit tests for Firebase helper, validators, and fixtures.
+- Add backend API contract smoke tests for auth and roadmap stub flows.
+- Harden dev auth fallback behavior for firebase-login via env gating (AUTH_STUB_ALLOW_FIREBASE_FALLBACK; defaults to DJANGO_DEBUG when unset).
+- Document backend local setup, stub endpoints, and validation commands in backend/README.md.
 
 ### Deliverables
 
@@ -104,6 +111,10 @@
 - Users can create and view roadmaps.
 - Roadmap data persisted and authorized.
 - UI and API flow demoable without AI.
+- Stub API server (Django) serving placeholder roadmap responses for frontend integration.
+- Stub auth API server (Django) serving register/login/firebase-login responses for frontend integration.
+- API smoke test coverage for stub auth + roadmap contract paths.
+- Env-gated Firebase fallback behavior documented for local vs non-dev environments.
 
 ## Sprint 3b (Mar 13 - Mar 19, 2026) - Decomposer + UX Polish
 
