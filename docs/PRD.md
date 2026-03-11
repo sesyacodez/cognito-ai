@@ -46,7 +46,7 @@ Cognito.ai is an adaptive, metacognitive learning platform that prevents "AI-dep
 | Backend        | Django (Python)                                     |
 | Authentication | Firebase Auth (Google OAuth) + Django password auth |
 | Database       | Supabase Postgres                                   |
-| AI Agent       | Nanoclaw (via OpenRouter)                            |
+| AI Agent       | Nanoclaw (via OpenRouter)                           |
 
 ## 6. System Architecture and Agent Skills (CAI-19/20)
 

@@ -17,7 +17,6 @@
   - Footer: collapsed section with no settings button.
 
   ## Auth Page
-
   - Provide two sign-in paths: "Sign in with Google" and email/password.
   - Include a simple register option with name, email, and password fields.
   - Show inline validation and error messaging near the fields.
