@@ -87,6 +87,12 @@ export default function Home() {
             Privacy Policy
           </a>.
         </p>
+        <p className="mt-4 text-xs text-center text-gray-400">
+          Don&apos;t have an account?{' '}
+          <a href="/signup" className="underline">
+            Sign up
+          </a>
+        </p>
       </main>
     </div>
   );
