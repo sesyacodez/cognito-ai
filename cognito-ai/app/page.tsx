@@ -1,8 +1,56 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/AuthContext";
 
 export default function Home() {
+  const router = useRouter();
+  const { login, loginWithGoogle, isLoading } = useAuth();
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+
+  async function handleEmailLogin(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    
+    try {
+      await login(email, password);
+      router.push("/insight-hub");
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Login failed. Please try again."
+      );
+    }
+  }
+
+  async function handleGoogleLogin() {
+    setError("");
+    try {
+      // This requires Firebase SDK configuration
+      // For now, show a message about setting up Firebase
+      const idToken = prompt(
+        "Firebase not configured. Enter a test ID token or leave blank to skip:"
+      );
+
+      if (!idToken) {
+        setError(
+          "Google OAuth requires Firebase setup. See README for configuration."
+        );
+        return;
+      }
+
+      await loginWithGoogle(idToken);
+      router.push("/insight-hub");
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Google login failed. Please try again."
+      );
+    }
+  }
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#0b0f1e] font-sans">
       {/* card container */}
@@ -20,7 +68,9 @@ export default function Home() {
         <div className="mt-6 space-y-3">
           <button
             type="button"
-            className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-white text-black rounded-md hover:bg-gray-100 transition cursor-pointer"
+            onClick={handleGoogleLogin}
+            disabled={isLoading}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-white text-black rounded-md hover:bg-gray-100 transition cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -51,28 +101,40 @@ export default function Home() {
                 111l81 64.3c19.7-58.6 74.5-102.2 139.1-102.2z"
               />
             </svg>
-            Continue with Google
+            {isLoading ? "Signing in..." : "Continue with Google"}
           </button>
 
           {/* username/password form */}
-          <form className="space-y-3 mt-4">
+          <form className="space-y-3 mt-4" onSubmit={handleEmailLogin}>
+            {error && (
+              <div className="p-2 bg-red-950 border border-red-700 rounded text-red-200 text-xs">
+                {error}
+              </div>
+            )}
             <input
-              type="text"
-              name="username"
-              placeholder="Username"
-              className="w-full px-4 py-2 bg-transparent border border-white text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              type="email"
+              placeholder="Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              disabled={isLoading}
+              required
+              className="w-full px-4 py-2 bg-transparent border border-white text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60"
             />
             <input
               type="password"
-              name="password"
               placeholder="Password"
-              className="w-full px-4 py-2 bg-transparent border border-white text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              disabled={isLoading}
+              required
+              className="w-full px-4 py-2 bg-transparent border border-white text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60"
             />
             <button
               type="submit"
-              className="w-full px-4 py-2 bg-white text-black rounded-md hover:bg-gray-100 transition cursor-pointer"
+              disabled={isLoading}
+              className="w-full px-4 py-2 bg-white text-black rounded-md hover:bg-gray-100 transition cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              Sign In
+              {isLoading ? "Signing in..." : "Sign In"}
             </button>
           </form>
         </div>

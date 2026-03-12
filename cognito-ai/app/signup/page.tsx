@@ -2,16 +2,17 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/AuthContext";
 
 export default function SignUp() {
   const router = useRouter();
+  const { register, loginWithGoogle, isLoading } = useAuth();
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [errors, setErrors] = useState<{ name?: string; email?: string; password?: string; confirmPassword?: string; general?: string }>({});
-  const [loading, setLoading] = useState(false);
 
   function validate() {
     const e: typeof errors = {};
@@ -34,23 +35,41 @@ export default function SignUp() {
       return;
     }
     setErrors({});
-    setLoading(true);
+
     try {
-      const res = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password }),
+      await register(name, email, password);
+      router.push("/insight-hub");
+    } catch (err) {
+      setErrors({
+        general: err instanceof Error ? err.message : "Registration failed. Please try again.",
       });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setErrors({ general: data?.detail ?? "Registration failed. Please try again." });
+    }
+  }
+
+  async function handleGoogleSignUp() {
+    setErrors({});
+    try {
+      // This requires Firebase SDK configuration
+      // For now, show a message about setting up Firebase
+      const idToken = prompt(
+        "Firebase not configured. Enter a test ID token or leave blank to skip:"
+      );
+
+      if (!idToken) {
+        setErrors({
+          general:
+            "Google OAuth requires Firebase setup. See README for configuration.",
+        });
         return;
       }
-      router.push("/");
-    } catch {
-      setErrors({ general: "Network error. Please try again." });
-    } finally {
-      setLoading(false);
+
+      await loginWithGoogle(idToken);
+      router.push("/insight-hub");
+    } catch (err) {
+      setErrors({
+        general:
+          err instanceof Error ? err.message : "Google sign-up failed. Please try again.",
+      });
     }
   }
 
@@ -71,7 +90,9 @@ export default function SignUp() {
         <div className="mt-6 space-y-3">
           <button
             type="button"
-            className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-white text-black rounded-md hover:bg-gray-100 transition cursor-pointer"
+            onClick={handleGoogleSignUp}
+            disabled={isLoading}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-white text-black rounded-md hover:bg-gray-100 transition cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -102,11 +123,16 @@ export default function SignUp() {
                 111l81 64.3c19.7-58.6 74.5-102.2 139.1-102.2z"
               />
             </svg>
-            Continue with Google
+            {isLoading ? "Creating account..." : "Continue with Google"}
           </button>
 
           {/* registration form */}
           <form className="space-y-3 mt-4" onSubmit={handleSubmit} noValidate>
+            {errors.general && (
+              <div className="p-2 bg-red-950 border border-red-700 rounded text-red-200 text-xs">
+                {errors.general}
+              </div>
+            )}
             <div>
               <input
                 type="text"
@@ -114,7 +140,8 @@ export default function SignUp() {
                 placeholder="Name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full px-4 py-2 bg-transparent border border-white text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={isLoading}
+                className="w-full px-4 py-2 bg-transparent border border-white text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60"
               />
               {errors.name && <p className="mt-1 text-xs text-red-400">{errors.name}</p>}
             </div>
@@ -125,7 +152,8 @@ export default function SignUp() {
                 placeholder="Email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-2 bg-transparent border border-white text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={isLoading}
+                className="w-full px-4 py-2 bg-transparent border border-white text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60"
               />
               {errors.email && <p className="mt-1 text-xs text-red-400">{errors.email}</p>}
             </div>
@@ -136,7 +164,8 @@ export default function SignUp() {
                 placeholder="Password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-2 bg-transparent border border-white text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={isLoading}
+                className="w-full px-4 py-2 bg-transparent border border-white text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60"
               />
               {errors.password && <p className="mt-1 text-xs text-red-400">{errors.password}</p>}
             </div>
@@ -147,17 +176,17 @@ export default function SignUp() {
                 placeholder="Confirm Password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full px-4 py-2 bg-transparent border border-white text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={isLoading}
+                className="w-full px-4 py-2 bg-transparent border border-white text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60"
               />
               {errors.confirmPassword && <p className="mt-1 text-xs text-red-400">{errors.confirmPassword}</p>}
             </div>
-            {errors.general && <p className="text-xs text-red-400 text-center">{errors.general}</p>}
             <button
               type="submit"
-              disabled={loading}
+              disabled={isLoading}
               className="w-full px-4 py-2 bg-white text-black rounded-md hover:bg-gray-100 transition cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              {loading ? "Creating…" : "Create Account"}
+              {isLoading ? "Creating…" : "Create Account"}
             </button>
           </form>
         </div>
