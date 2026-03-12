@@ -49,21 +49,7 @@ export default function SignUp() {
   async function handleGoogleSignUp() {
     setErrors({});
     try {
-      // This requires Firebase SDK configuration
-      // For now, show a message about setting up Firebase
-      const idToken = prompt(
-        "Firebase not configured. Enter a test ID token or leave blank to skip:"
-      );
-
-      if (!idToken) {
-        setErrors({
-          general:
-            "Google OAuth requires Firebase setup. See README for configuration.",
-        });
-        return;
-      }
-
-      await loginWithGoogle(idToken);
+      await loginWithGoogle();
       router.push("/insight-hub");
     } catch (err) {
       setErrors({
