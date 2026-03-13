@@ -32,10 +32,15 @@ export default function InsightHub() {
     setError("");
     try {
       const session = getSession();
-      const headers = session ? { Authorization: `Bearer ${session.token}` } : {};
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+      };
+      if (session) {
+        headers["Authorization"] = `Bearer ${session.token}`;
+      }
 
       const res = await fetch("/api/roadmaps", {
-        headers: { ...headers, "Content-Type": "application/json" },
+        headers,
       });
 
       if (!res.ok) {
@@ -61,11 +66,16 @@ export default function InsightHub() {
     setError("");
     try {
       const session = getSession();
-      const headers = session ? { Authorization: `Bearer ${session.token}` } : {};
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+      };
+      if (session) {
+        headers["Authorization"] = `Bearer ${session.token}`;
+      }
 
       const res = await fetch("/api/roadmaps", {
         method: "POST",
-        headers: { ...headers, "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({ topic: newTopic }),
       });
 

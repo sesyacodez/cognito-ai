@@ -5,12 +5,33 @@ def get_placeholder_roadmap(topic: str) -> dict:
     topic_clean = topic.strip() or "General Learning Path"
 
     return {
-        "roadmap_id": f"placeholder-{uuid4().hex[:8]}",
+        "id": f"placeholder-{uuid4().hex[:8]}",
+        "topic": topic_clean,
         "modules": [
-            {"id": "m1", "title": f"{topic_clean}: Foundations", "index": 0},
-            {"id": "m2", "title": f"{topic_clean}: Core Concepts", "index": 1},
-            {"id": "m3", "title": f"{topic_clean}: Intermediate Techniques", "index": 2},
-            {"id": "m4", "title": f"{topic_clean}: Advanced Applications", "index": 3},
-            {"id": "m5", "title": f"{topic_clean}: Capstone Project", "index": 4},
+            {
+                "order": 0,
+                "title": f"{topic_clean}: Foundations",
+                "description": "Learn the basics and fundamental concepts."
+            },
+            {
+                "order": 1,
+                "title": f"{topic_clean}: Core Concepts",
+                "description": "Explore the essential principles and theories."
+            },
+            {
+                "order": 2,
+                "title": f"{topic_clean}: Intermediate Techniques",
+                "description": "Develop intermediate skills and apply techniques."
+            },
+            {
+                "order": 3,
+                "title": f"{topic_clean}: Advanced Applications",
+                "description": "Master advanced applications and real-world use cases."
+            },
+            {
+                "order": 4,
+                "title": f"{topic_clean}: Capstone Project",
+                "description": "Complete a capstone project to demonstrate your learning."
+            },
         ],
     }
