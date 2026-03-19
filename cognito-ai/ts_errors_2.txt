@@ -1,0 +1,3 @@
+﻿.next_export/dev/types/app/insight-hub/page.ts(5,15): error TS2305: Module '"next/dist/build/segment-config/app/app-segment-config.js"' has no exported member 'PrefetchForTypeCheckInternal'.
+.next_export/dev/types/app/layout.ts(5,15): error TS2305: Module '"next/dist/build/segment-config/app/app-segment-config.js"' has no exported member 'PrefetchForTypeCheckInternal'.
+.next_export/dev/types/validator.ts(51,39): error TS2307: Cannot find module '../../../app/login/page.js' or its corresponding type declarations.
