@@ -10,8 +10,9 @@
 ## Assumptions
 
 - Sprints are 1 week (Friday to Thursday). Immediate plan covers the next 2 days.
-- Stack: Next.js App Router, Tailwind, Django REST, Supabase Postgres, Firebase Auth (Google OAuth) + Django password auth, Nanoclaw agent (via OpenRouter).
+- Stack: Next.js App Router, Tailwind, Django REST, Supabase Postgres, Firebase Auth (Google OAuth) + Django password auth, Gemini via OpenRouter (agentic skill runner).
 - API contracts in docs/api-contracts.md are the source of truth.
+- Agent skills live in `backend/skills/*.py`; an agent runner in `backend/agent/runner.py` calls OpenRouter with skill specs as tools.
 
 ## Sprint 2 (Feb 27 - Mar 5, 2026) - Auth + Login MVP (Missed)
 
@@ -143,9 +144,18 @@
 
 ### Backend/AI Engineer
 
-- Implement Decomposer skill (Nanoclaw agent skill) returning 5 modules.
-- Wire Decomposer to POST /api/roadmaps.
-- Add validations and retries for AI output shape.
+- Create `backend/skills/` directory with one skill per file (spec + implementation).
+- Implement `backend/skills/decomposer.py` — Decomposer skill, two modes:
+  - **`learn`** mode: 3–7 modules with learning outcomes.
+  - **`solve`** mode: 1–5 modules with concrete deliverables (1 module if problem is simple).
+- Implement `backend/agent/runner.py` — agent runner that loads skill specs and calls OpenRouter (Gemini `nvidia/nemotron-3-nano-30b-a3b:free`) with them as tools; validates output; retries once on failure; raises `AgentError` on repeated failure.
+- Wire Decomposer to `POST /api/roadmaps`: call `runner.run_skill("decomposer", topic, mode=mode)`; graceful fixture fallback on `AgentError`.
+- Generate UUID4 for `roadmap_id` in `normalize_decomposer_output()`.
+- Update `validators.py`: flexible module count (1–7), keep order uniqueness check.
+- Add `httpx>=0.27,<1` to `requirements.txt`; add `DECOMPOSER_MODEL` and `OPENROUTER_API_KEY` notes to `.env.example`.
+- Update unit tests in `tests/test_validators.py` for flexible count.
+- Add `tests/test_decomposer.py`: happy path, retry, double-failure, missing API key.
+- Update `tests/test_api_contract_smoke.py` to mock `runner.run_skill` and pass `mode`.
 
 ### Deliverables
 
@@ -180,9 +190,15 @@
 
 ### Backend/AI Engineer
 
-- Implement Lesson_Generator and Socratic_Tutor skills for the Nanoclaw agent.
-- Ensure tiered hints and difficulty levels match contract.
-- Provide evaluation logic for answers and transitions.
+- Implement `backend/skills/lesson_generator.py` — Lesson_Generator skill:
+  - Generates micro-theory (≤120 words) + 3 questions (easy/medium/hard) for a module topic.
+  - For `solve` mode: theory is a problem brief; questions are guided implementation tasks.
+- Implement `backend/skills/socratic_tutor.py` — Socratic_Tutor skill:
+  - Evaluates student answer and returns a guiding question or tiered hint.
+  - Never provides the direct answer.
+- Wire both skills into the agent runner; update runner to support multi-skill context.
+- Ensure tiered hints and difficulty levels match contracts.
+- Provide evaluation logic for answer correctness and lesson state transitions.
 
 ### Deliverables
 

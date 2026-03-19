@@ -1,0 +1,19 @@
+# Environments
+.env
+.env.*
+!.env.example
+!.env.template
+
+# IDEs and OS
+.vscode/
+.idea/
+.DS_Store
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+coverage.xml
+htmlcov/
+*.sqlite3
+db.sqlite3

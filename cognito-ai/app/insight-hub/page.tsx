@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useAuth } from "@/lib/AuthContext";
 import { getSession } from "@/lib/auth";
+import { useRouter } from "next/navigation";
 
 /* ── types ─────────────────────────────────────────── */
 
@@ -20,6 +21,23 @@ interface Journey {
   modules: JourneyModule[];
   createdAt?: string;
   progress?: number;
+}
+
+/* Normalize the POST /api/roadmaps response into a Journey */
+function normalizeJourney(raw: Record<string, unknown>, topic: string, type: "topic" | "problem"): Journey {
+  const rawModules = (raw.modules as Array<Record<string, unknown>> | undefined) ?? [];
+  return {
+    id: (raw.roadmap_id as string) ?? (raw.id as string) ?? `journey-${Date.now()}`,
+    topic: (raw.topic as string) ?? topic,
+    type,
+    modules: rawModules.map((m, i) => ({
+      order: (m.index as number) ?? i,
+      title: (m.title as string) ?? "",
+      description: (m.outcome as string) ?? (m.description as string) ?? "",
+    })),
+    createdAt: new Date().toISOString(),
+    progress: 0,
+  };
 }
 
 /* ── helpers ────────────────────────────────────────── */
@@ -40,7 +58,8 @@ function timeAgo(dateStr?: string) {
 /* ── component ──────────────────────────────────────── */
 
 export default function InsightHub() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const router = useRouter();
   const [journeys, setJourneys] = useState<Journey[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
@@ -49,7 +68,13 @@ export default function InsightHub() {
   const [searchQuery, setSearchQuery] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [error, setError] = useState("");
+  const [showDropdown, setShowDropdown] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  const handleLogout = async () => {
+    await logout();
+    router.push("/");
+  };
 
   useEffect(() => {
     fetchJourneys();
@@ -85,14 +110,16 @@ export default function InsightHub() {
       const headers: HeadersInit = { "Content-Type": "application/json" };
       if (session) headers["Authorization"] = `Bearer ${session.token}`;
 
+      const mode = activeTab === "topic" ? "learn" : "solve";
       const res = await fetch("/api/roadmaps", {
         method: "POST",
         headers,
-        body: JSON.stringify({ topic: inputValue, type: activeTab }),
+        body: JSON.stringify({ topic: inputValue, mode }),
       });
       if (!res.ok) throw new Error("Failed to create journey");
 
-      const newJourney = await res.json();
+      const raw = await res.json();
+      const newJourney = normalizeJourney(raw, inputValue, activeTab);
       setJourneys((prev) => [newJourney, ...prev]);
       setInputValue("");
     } catch (err) {
@@ -125,7 +152,7 @@ export default function InsightHub() {
 
   const groups = groupJourneys();
   const filteredJourneys = journeys.filter((j) =>
-    j.topic.toLowerCase().includes(searchQuery.toLowerCase())
+    (j.topic ?? "").toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   /* recent = last 3 for bottom cards */
@@ -226,8 +253,28 @@ export default function InsightHub() {
             </button>
 
             {/* user avatar */}
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xs font-bold">
-              {user?.name?.charAt(0)?.toUpperCase() || "U"}
+            <div className="relative">
+              <button
+                onClick={() => setShowDropdown(!showDropdown)}
+                className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xs font-bold hover:ring-2 ring-blue-500 transition focus:outline-none"
+              >
+                {user?.name?.charAt(0)?.toUpperCase() || "U"}
+              </button>
+              
+              {showDropdown && (
+                <div className="absolute right-0 mt-2 w-48 bg-[#0f1224] rounded-lg shadow-xl border border-gray-700/50 py-1 z-50">
+                  <div className="px-4 py-2 border-b border-gray-700/50">
+                    <p className="text-sm font-medium text-white truncate">{user?.name}</p>
+                    <p className="text-xs text-gray-400 truncate">{user?.email}</p>
+                  </div>
+                  <button
+                    onClick={handleLogout}
+                    className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-gray-800 transition"
+                  >
+                    Logout
+                  </button>
+                </div>
+              )}
             </div>
           </header>
 
@@ -455,7 +502,7 @@ function SidebarGroup({
   searchQuery: string;
 }) {
   const filtered = items.filter((j) =>
-    j.topic.toLowerCase().includes(searchQuery.toLowerCase())
+    (j.topic ?? "").toLowerCase().includes(searchQuery.toLowerCase())
   );
   if (filtered.length === 0) return null;
 

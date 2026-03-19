@@ -4,6 +4,7 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
+from agent.runner import AgentError, run_skill
 from utils.fixtures import get_placeholder_roadmap
 
 
@@ -19,5 +20,14 @@ def roadmaps_collection(request):
         return JsonResponse({"detail": "Invalid JSON payload."}, status=400)
 
     topic = str(payload.get("topic", "")).strip() or "General Learning Path"
-    response = get_placeholder_roadmap(topic)
-    return JsonResponse(response, status=201)
+    mode = str(payload.get("mode", "learn")).strip()
+    if mode not in ("learn", "solve"):
+        mode = "learn"
+
+    try:
+        result = run_skill("decomposer", mode=mode, topic=topic)
+    except AgentError:
+        result = get_placeholder_roadmap(topic)
+        result["mode"] = mode
+
+    return JsonResponse(result, status=201)

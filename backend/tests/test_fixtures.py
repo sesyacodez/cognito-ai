@@ -16,15 +16,23 @@ class FixtureTests(unittest.TestCase):
     def test_placeholder_has_roadmap_id(self):
         response = get_placeholder_roadmap("Linear Algebra")
         self.assertTrue(response["roadmap_id"])
+        self.assertIn("placeholder-", response["roadmap_id"])
 
     def test_placeholder_shape_matches_contract(self):
         response = get_placeholder_roadmap("Linear Algebra")
         self.assertIn("roadmap_id", response)
+        self.assertIn("mode", response)
         self.assertIn("modules", response)
         for module in response["modules"]:
             self.assertIn("id", module)
             self.assertIn("title", module)
             self.assertIn("index", module)
+            self.assertIn("outcome", module)
+
+    def test_placeholder_topic_used_in_titles(self):
+        response = get_placeholder_roadmap("Python Basics")
+        for module in response["modules"]:
+            self.assertIn("Python Basics", module["title"])
 
 
 if __name__ == "__main__":

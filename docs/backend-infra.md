@@ -69,5 +69,5 @@ DB_SSLMODE=require
 Notes:
 
 - `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are needed for any direct Supabase API usage (if used).
-- `OPENROUTER_API_KEY` is required for provisioning the Nanoclaw agent.
+- `OPENROUTER_API_KEY` is required for the agentic skill runner (`backend/agent/runner.py`). Skills call Gemini via OpenRouter.
 - Avoid exposing service role keys or the OpenRouter API key in the client.

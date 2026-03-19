@@ -2,36 +2,45 @@ from uuid import uuid4
 
 
 def get_placeholder_roadmap(topic: str) -> dict:
+    """
+    Returns a static 5-module roadmap in the normalized API contract shape.
+    Used as a graceful fallback when the agent runner is unavailable.
+    """
     topic_clean = topic.strip() or "General Learning Path"
 
     return {
-        "id": f"placeholder-{uuid4().hex[:8]}",
-        "topic": topic_clean,
+        "roadmap_id": f"placeholder-{uuid4().hex[:8]}",
+        "mode": "learn",
         "modules": [
             {
-                "order": 0,
+                "id": f"placeholder-{uuid4().hex[:6]}",
+                "index": 0,
                 "title": f"{topic_clean}: Foundations",
-                "description": "Learn the basics and fundamental concepts."
+                "outcome": "Learn the basics and fundamental concepts.",
             },
             {
-                "order": 1,
+                "id": f"placeholder-{uuid4().hex[:6]}",
+                "index": 1,
                 "title": f"{topic_clean}: Core Concepts",
-                "description": "Explore the essential principles and theories."
+                "outcome": "Explore the essential principles and theories.",
             },
             {
-                "order": 2,
+                "id": f"placeholder-{uuid4().hex[:6]}",
+                "index": 2,
                 "title": f"{topic_clean}: Intermediate Techniques",
-                "description": "Develop intermediate skills and apply techniques."
+                "outcome": "Develop intermediate skills and apply techniques.",
             },
             {
-                "order": 3,
+                "id": f"placeholder-{uuid4().hex[:6]}",
+                "index": 3,
                 "title": f"{topic_clean}: Advanced Applications",
-                "description": "Master advanced applications and real-world use cases."
+                "outcome": "Master advanced applications and real-world use cases.",
             },
             {
-                "order": 4,
+                "id": f"placeholder-{uuid4().hex[:6]}",
+                "index": 4,
                 "title": f"{topic_clean}: Capstone Project",
-                "description": "Complete a capstone project to demonstrate your learning."
+                "outcome": "Complete a capstone project to demonstrate your learning.",
             },
         ],
     }
