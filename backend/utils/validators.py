@@ -38,6 +38,34 @@ class DecomposerOutput(BaseModel):
     roadmap: RoadmapPayload
 
 
+class LessonQuestion(BaseModel):
+    id: str = Field(min_length=1)
+    prompt: str = Field(min_length=1)
+    difficulty: str = Field(pattern="^(easy|medium|hard)$")
+    answer_key: str = Field(min_length=1)
+
+
+class LessonPayload(BaseModel):
+    micro_theory: str = Field(min_length=1, max_length=1000)  # ~120-150 words limit
+    questions: list[LessonQuestion]
+
+    @model_validator(mode="after")
+    def validate_questions(self):
+        if len(self.questions) != 3:
+            raise ValueError("lesson.questions must contain exactly 3 questions")
+        return self
+
+
+class LessonOutput(BaseModel):
+    lesson: LessonPayload
+
+
+class SocraticEvaluation(BaseModel):
+    correct: bool
+    next_prompt: str
+    hint: str | None = None
+
+
 def normalize_decomposer_output(data: dict, mode: str = "learn") -> dict:
     validated = DecomposerOutput.model_validate(data)
     sorted_modules = sorted(validated.roadmap.modules, key=lambda m: m.order)
@@ -57,10 +85,39 @@ def normalize_decomposer_output(data: dict, mode: str = "learn") -> dict:
     }
 
 
+def normalize_lesson_output(data: dict, mode: str = "learn") -> dict:
+    validated = LessonOutput.model_validate(data)
+    return {
+        "lesson_id": str(uuid4()),
+        "mode": mode,
+        "micro_theory": validated.lesson.micro_theory,
+        "questions": [
+            {
+                "id": q.id,
+                "prompt": q.prompt,
+                "difficulty": q.difficulty,
+                "answer_key": q.answer_key,
+            }
+            for q in validated.lesson.questions
+        ],
+    }
+
+
+def normalize_evaluation_output(data: dict) -> dict:
+    validated = SocraticEvaluation.model_validate(data)
+    return validated.model_dump()
+
+
 __all__ = [
     "DecomposerModule",
     "RoadmapPayload",
     "DecomposerOutput",
     "normalize_decomposer_output",
+    "LessonQuestion",
+    "LessonPayload",
+    "LessonOutput",
+    "SocraticEvaluation",
+    "normalize_lesson_output",
+    "normalize_evaluation_output",
     "ValidationError",
 ]

@@ -14,6 +14,13 @@ OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 DEFAULT_MODEL = "qwen/qwen3-coder:free"
 
 
+SKILL_MODEL_MAP = {
+    "decomposer": "DECOMPOSER_MODEL",
+    "lesson_generator": "LESSON_GENERATOR_MODEL",
+    "socratic_tutor": "SOCRATIC_TUTOR_MODEL",
+}
+
+
 class AgentError(Exception):
     """Raised when the agent runner cannot produce a valid result after retries."""
 
@@ -26,7 +33,7 @@ def _get_skill(skill_name: str):
         raise AgentError(f"Unknown skill: '{skill_name}'")
 
 
-def _call_openrouter(messages: list, tools: list, api_key: str, model: str) -> dict:
+def _call_openrouter(messages: list, tools: list, api_key: str, model: str, skill_name: str) -> dict:
     """
     POST to OpenRouter's chat completions endpoint.
     Returns the parsed response dict or raises AgentError on HTTP/network failure.
@@ -41,7 +48,7 @@ def _call_openrouter(messages: list, tools: list, api_key: str, model: str) -> d
         "model": model,
         "messages": messages,
         "tools": tools,
-        "tool_choice": "required",
+        "tool_choice": {"type": "function", "function": {"name": skill_name}},
     }
     try:
         response = httpx.post(
@@ -83,7 +90,7 @@ def _extract_tool_args(response: dict, skill_name: str) -> dict:
         raise AgentError(f"Unexpected response shape from OpenRouter: {exc}") from exc
 
 
-def run_skill(skill_name: str, mode: str = "learn", **kwargs) -> dict:
+def run_skill(skill_name: str, mode: str = "learn", state: dict = None, **kwargs) -> dict:
     """
     Run a named skill via OpenRouter tool-calling.
 
@@ -103,15 +110,36 @@ def run_skill(skill_name: str, mode: str = "learn", **kwargs) -> dict:
             "OPENROUTER_API_KEY is not set. Cannot call the skill runner."
         )
 
-    model = os.environ.get("DECOMPOSER_MODEL", DEFAULT_MODEL)
+    # Use skill-specific model env var if available, else fallback to DECOMPOSER_MODEL
+    model_env = SKILL_MODEL_MAP.get(skill_name, "DECOMPOSER_MODEL")
+    model = os.environ.get(model_env, os.environ.get("DECOMPOSER_MODEL", DEFAULT_MODEL))
+
     skill = _get_skill(skill_name)
 
-    topic = kwargs.get("topic", "")
+    # Build the system and user messages
     system_prompt = skill.SYSTEM_PROMPTS.get(mode, skill.SYSTEM_PROMPTS.get("learn"))
+    
+    # Contextual user message based on skill
+    user_content = f"Inputs: {json.dumps(kwargs)}"
+    if skill_name == "decomposer":
+        user_content = f"Topic: {kwargs.get('topic', 'General Learning Path')}"
+    elif skill_name == "lesson_generator":
+        user_content = f"Module Topic: {kwargs.get('module_topic', 'General Topic')}"
+    elif skill_name == "socratic_tutor":
+        user_content = (
+            f"Question: {kwargs.get('question_prompt', '')}\n"
+            f"Student Answer: {kwargs.get('student_answer', '')}\n"
+            f"Hint Level: {kwargs.get('hint_level', 0)}"
+        )
+
     messages = [
         {"role": "system", "content": system_prompt},
-        {"role": "user", "content": f"Topic: {topic}"},
+        {"role": "user", "content": user_content},
     ]
+    
+    # If state is provided, we could inject it as a developer/system message or user context
+    # For now, we'll just keep it available for the skill.run() implementation if needed.
+    
     tools = [skill.SPEC]
 
     last_error: AgentError | None = None
@@ -131,8 +159,10 @@ def run_skill(skill_name: str, mode: str = "learn", **kwargs) -> dict:
                 }
             ]
         try:
-            response = _call_openrouter(retry_messages, tools, api_key, model)
+            response = _call_openrouter(retry_messages, tools, api_key, model, skill_name)
             params = _extract_tool_args(response, skill_name)
+            
+            # Implementation call allows passing state and mode
             result = skill.run(params, mode=mode)
             return result
         except (AgentError, ValidationError) as exc:
