@@ -122,6 +122,9 @@ export default function InsightHub() {
       const newJourney = normalizeJourney(raw, inputValue, activeTab);
       setJourneys((prev) => [newJourney, ...prev]);
       setInputValue("");
+      
+      const qs = new URLSearchParams({ topic: newJourney.topic, mode: newJourney.type === "topic" ? "learn" : "solve" });
+      router.push(`/workspace/${newJourney.id}?${qs.toString()}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create journey");
     } finally {
@@ -421,6 +424,10 @@ export default function InsightHub() {
                   {recentJourneys.map((journey) => (
                     <div
                       key={journey.id}
+                      onClick={() => {
+                        const qs = new URLSearchParams({ topic: journey.topic, mode: journey.type === "topic" ? "learn" : "solve" });
+                        router.push(`/workspace/${journey.id}?${qs.toString()}`);
+                      }}
                       className="group bg-[#0f1224] rounded-xl border border-gray-700/40 p-5 hover:border-blue-500/40 transition-all duration-200 cursor-pointer hover:shadow-lg hover:shadow-blue-900/10"
                     >
                       {/* card header */}
@@ -514,6 +521,10 @@ function SidebarGroup({
       {filtered.map((journey) => (
         <button
           key={journey.id}
+          onClick={() => {
+            const qs = new URLSearchParams({ topic: journey.topic, mode: journey.type === "topic" ? "learn" : "solve" });
+            window.location.href = `/workspace/${journey.id}?${qs.toString()}`;
+          }}
           className="w-full text-left px-3 py-2 rounded-lg text-xs text-gray-300 hover:bg-[#0f1224] hover:text-white transition flex items-center gap-2 group"
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="flex-shrink-0 text-gray-500 group-hover:text-blue-400 transition">
