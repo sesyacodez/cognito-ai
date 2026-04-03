@@ -1,106 +1,148 @@
 # Cognito.ai
 
-An adaptive, metacognitive learning platform that replaces direct answer-giving with Socratic, scaffolded tutoring. The goal is to help university students build real understanding by guiding them through structured roadmaps, micro-theory, and tiered hints.
+Adaptive learning platform focused on Socratic tutoring instead of direct answer-giving.
 
-## Product Vision
+This repository is a monorepo with a Next.js frontend and a Django backend.
 
-- Prevent AI-dependency by never giving direct answers.
-- Decompose complex topics into a 5-module learning roadmap.
-- Persist progress across lessons, including XP, stars, and lesson state.
+## Current State (April 2026)
 
-## MVP Scope
+This section reflects what is implemented in code today.
 
-- Google authentication via Firebase Auth and backend session exchange.
-- Topic decomposition into exactly 5 modules with outcomes.
-- Socratic lesson flow: micro-theory, 3 difficulty questions, tiered hints.
-- Personal Insight Hub (Library) to resume progress.
-- Progress persistence to a relational database.
+### Repository Architecture
 
-## User Flow
+- `cognito-ai/`: Next.js 16 (App Router) frontend.
+- `backend/`: Django backend with auth, roadmap, and lesson endpoints.
+- `docs/`: product, architecture, API contract, and planning documents.
 
-1. Sign in with Google.
-2. Enter a topic or a specific problem.
-3. Review the generated roadmap and start a module.
-4. Work through micro-theory and guided questions with hints.
-5. Finish with reflection and save progress to the library.
+### Frontend (Implemented)
 
-## Experience Principles
+Routes currently present:
 
-- The AI mentor asks questions and never provides final answers.
-- Hints consume stars and update state immediately.
-- Clear loading, empty, and error states across lists and lessons.
+- `/` login page (email/password UI + Google button).
+- `/signup` registration page.
+- `/insight-hub` main journey creation/list page.
+- `/workspace/[lessonId]` lesson workspace.
 
-## UI Layout Summary
+Implemented UI behavior:
 
-- Insight Hub: topic/problem toggle, search bar with mic and upload icons, recent journeys.
-- Interaction Screen: split layout with micro-theory on the left and chat on the right.
-- Dashboard: progress overview and lesson tracking, accessible from the sidebar.
-- Sidebar: Gemini-style navigation with search, toolbar, and recent journeys.
-- Mobile: sidebar hidden by default and stacked theory + chat panels.
+- Dark, dashboard-like layout with sidebar and journey list on Insight Hub.
+- Topic vs Problem toggle when creating a journey.
+- Lesson workspace with:
+	- Micro-theory panel.
+	- Question flow (easy/medium/hard).
+	- Hint requests with star reduction.
+	- Optimistic submit/hint UX.
 
-## Architecture Overview
+Important integration note:
 
-The learning flow is driven by a Nanoclaw agent (via OpenRouter). Instead of prompt-engineering raw API calls, the backend provisions a Nanoclaw agent and equips it with discrete skills that it invokes autonomously.
+- Frontend auth state is currently managed with Firebase client SDK and local storage.
+- Next.js rewrites `/api/*` to Django (`NEXT_PUBLIC_BACKEND_URL`, default `http://localhost:8000`).
+- Backend auth endpoints exist, but frontend auth is not yet fully unified around backend-issued sessions.
 
-- `Decomposer`: generates a 5-module roadmap.
-- `Lesson_Generator`: produces micro-theory and 3 questions (easy, medium, hard).
-- `Socratic_Tutor`: evaluates responses and provides guiding questions or hints.
-- `Progress_Updater`: persists XP, stars, and lesson state through the backend API.
+### Backend (Implemented)
 
-## API Contracts (Backend)
+Live endpoints:
 
-- `POST /api/auth/firebase-login`: exchange Firebase ID token for backend session.
-- `GET /api/roadmaps`: list roadmaps for the user.
-- `POST /api/roadmaps`: create a roadmap for a topic.
-- `GET /api/roadmaps/{roadmap_id}`: roadmap detail and progress.
-- `GET /api/lessons/{lesson_id}`: fetch micro-theory and question set.
-- `POST /api/lessons/{lesson_id}/answer`: submit answers and get next prompt.
-- `POST /api/lessons/{lesson_id}/hint`: request a hint and update stars.
-- `GET /api/dashboard`: progress summaries and streak info.
+- `POST /api/auth/register`
+- `POST /api/auth/login`
+- `POST /api/auth/firebase-login`
+- `GET /api/roadmaps`
+- `POST /api/roadmaps`
+- `GET /api/lessons/{lesson_id}`
+- `POST /api/lessons/{lesson_id}/answer`
+- `POST /api/lessons/{lesson_id}/hint`
 
-See [docs/api-contracts.md](docs/api-contracts.md) for request/response payloads.
+Current backend behavior:
 
-## Data Model (Summary)
+- Auth endpoints use stub/in-memory storage helpers for local workflow.
+- `GET /api/roadmaps` returns an empty list placeholder.
+- `POST /api/roadmaps` currently returns fixture-based 5-module output.
+- Lesson endpoints call AI skills through the runner with fixture fallback on agent failure.
+- Lesson cache is in-memory (process lifetime), not persistent DB storage.
+- ORM models for users/roadmaps are placeholders and not implemented yet.
 
-- Users, roadmaps, modules, lessons, questions.
-- Lesson state and question attempts with hint usage and XP tracking.
+### AI Skill Runner Status
 
-See [docs/data-schema.md](docs/data-schema.md) for full schema details.
+Skills implemented in `backend/skills/`:
+
+- `decomposer.py`
+- `lesson_generator.py`
+- `socratic_tutor.py`
+
+Runner implemented in `backend/agent/runner.py` with:
+
+- OpenRouter tool-calling.
+- Skill-specific model env vars.
+- Retry-on-invalid-output behavior.
+
+Not implemented yet:
+
+- `progress_updater` skill and DB-backed progress persistence flow.
+
+## Planned (From docs/plan.md and PRD)
+
+Planned direction (not fully implemented yet):
+
+- Replace roadmap fixtures with decomposer-driven generation in roadmap API.
+- Persist users, roadmaps, lessons, and progress in Supabase Postgres via Django ORM.
+- Add dashboard/progress endpoint and UI (`GET /api/dashboard`).
+- Fully align frontend auth/session handling with backend session exchange.
+- Complete end-to-end progress model (XP, stars, streaks, resumable lessons).
+- Continue UX polish for Insight Hub and mobile adaptations.
 
 ## Tech Stack
 
-- Frontend: Next.js App Router + Tailwind CSS.
-- Backend: Django REST Framework.
-- Auth: Firebase Auth (Google OAuth).
-- Database: PostgreSQL.
-- AI Agent: Nanoclaw (via OpenRouter).
+- Frontend: Next.js 16, React 19, Tailwind CSS 4, Firebase Web SDK.
+- Backend: Django 5, Django REST Framework, Pydantic, httpx.
+- AI: OpenRouter tool-calling via backend skill runner.
+- Database target: Supabase Postgres (planned integration is partial/in-progress).
 
-## Repository Conventions
+## Local Development
 
-- Use the Next.js App Router under `app/`.
-- Global styles live in `app/globals.css` only.
-- Avoid barrel imports; import from concrete module paths.
-- Prefer server components; isolate client state with `"use client"`.
-
-See [docs/implementation-rules.md](docs/implementation-rules.md) for full rules.
-
-## Getting Started
-
-Install dependencies and run the development server:
+### 1) Backend
 
 ```bash
+cd backend
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env
+python manage.py runserver 0.0.0.0:8000
+```
+
+### 2) Frontend
+
+```bash
+cd cognito-ai
 npm install
 npm run dev
 ```
 
-Open http://localhost:3000 to view the app.
+Then open `http://localhost:3000`.
+
+## Testing
+
+Backend tests:
+
+```bash
+cd backend
+python manage.py test tests --verbosity=2
+```
+
+Frontend lint:
+
+```bash
+cd cognito-ai
+npm run lint
+```
 
 ## Documentation Index
 
-- [Product Requirements](docs/PRD.md)
-- [Design Brief](docs/design-brief.md)
-- [UI/UX Guidelines](docs/ui-ux-guidelines.md)
-- [API Contracts](docs/api-contracts.md)
-- [Data Schema](docs/data-schema.md)
-- [Implementation Rules](docs/implementation-rules.md)
-- [Agent Skills Spec](docs/agent-skills-spec.md)
+- Product requirements: [docs/PRD.md](docs/PRD.md)
+- Design brief: [docs/design-brief.md](docs/design-brief.md)
+- UI/UX guidelines: [docs/ui-ux-guidelines.md](docs/ui-ux-guidelines.md)
+- API contracts (target): [docs/api-contracts.md](docs/api-contracts.md)
+- Data schema (target): [docs/data-schema.md](docs/data-schema.md)
+- Implementation rules: [docs/implementation-rules.md](docs/implementation-rules.md)
+- Sprint plan: [docs/plan.md](docs/plan.md)
+- Agent skills spec: [docs/agent-skills-spec.md](docs/agent-skills-spec.md)
