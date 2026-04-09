@@ -7,6 +7,7 @@ Design notes:
   on repeated GET requests (and the answer_key is available for evaluation).
 - The answer_key is NEVER returned to the frontend — it stays in the cache only.
 - Answer evaluation and hints are handled by the Socratic_Tutor skill.
+- Progress is tracked via the Progress_Updater skill and persisted in-memory.
 """
 
 import json
@@ -21,8 +22,26 @@ from utils.fixtures import (
     get_placeholder_hint,
     get_placeholder_lesson,
 )
-from utils.lesson_state import calculate_xp, calculate_stars, transition_status
+from utils.lesson_state import (
+    calculate_stars,
+    safe_transition_status,
+    InvalidTransitionError,
+)
 from utils.lesson_stub_store import get_lesson, save_lesson
+from utils.progress_store import (
+    get_lesson_progress,
+    update_lesson_progress,
+)
+
+
+_DEFAULT_USER = "anonymous"
+
+
+def _get_user_id(request) -> str:
+    auth = request.META.get("HTTP_AUTHORIZATION", "")
+    if auth.startswith("Bearer "):
+        return auth[7:].strip() or _DEFAULT_USER
+    return _DEFAULT_USER
 
 
 def _strip_answer_keys(lesson: dict) -> dict:
@@ -65,7 +84,6 @@ def lesson_detail(request, lesson_id: str):
     except AgentError:
         lesson = get_placeholder_lesson(module_topic, mode=mode)
 
-    # Override the lesson_id with the one from the URL so the link is stable.
     lesson["lesson_id"] = lesson_id
     save_lesson(lesson_id, lesson)
 
@@ -80,6 +98,9 @@ def lesson_answer(request, lesson_id: str):
 
     Body: { "question_id": string, "answer": string }
     Response: { "correct": bool, "next_prompt": string, "progress": {...} }
+
+    Uses the Socratic_Tutor for evaluation and the Progress_Updater for
+    consistent XP/stars computation with safety-checked state transitions.
     """
     try:
         payload = json.loads(request.body or "{}")
@@ -92,7 +113,7 @@ def lesson_answer(request, lesson_id: str):
     if not question_id or not student_answer:
         return JsonResponse({"detail": "question_id and answer are required."}, status=400)
 
-    # Look up the lesson and find the question's answer_key for context
+    user_id = _get_user_id(request)
     cached = get_lesson(lesson_id)
     question_prompt = ""
     answer_key = ""
@@ -115,18 +136,62 @@ def lesson_answer(request, lesson_id: str):
         evaluation = get_placeholder_evaluation(correct=bool(answer_key and student_answer))
 
     correct = evaluation.get("correct", False)
-    xp = calculate_xp(correct=correct, hint_level=0)
-    stars = calculate_stars(hint_usage=0)
     total_questions = len(cached.get("questions", [])) if cached else 3
-    status = transition_status("in_progress", 1, total_questions)
+
+    lesson_prog = get_lesson_progress(user_id, lesson_id)
+    answered_count = len(lesson_prog.answered_questions) + (1 if correct else 0)
+
+    new_status = safe_transition_status(
+        lesson_prog.status, answered_count, total_questions
+    )
+
+    hint_usage = max(
+        (a.hint_level for a in lesson_prog.attempts if a.question_id == question_id),
+        default=0,
+    )
+
+    try:
+        progress_result = run_skill(
+            "progress_updater",
+            mode="learn",
+            correctness=correct,
+            hint_usage=hint_usage,
+            timing_seconds=0,
+            current_xp=lesson_prog.xp_earned,
+            current_status=lesson_prog.status,
+            answered_count=answered_count,
+            total_questions=total_questions,
+        )
+    except AgentError:
+        from utils.lesson_state import calculate_xp
+        xp = calculate_xp(correct=correct, hint_level=hint_usage)
+        progress_result = {
+            "xp_earned": xp,
+            "total_xp": lesson_prog.xp_earned + xp,
+            "stars_remaining": calculate_stars(hint_usage=hint_usage),
+            "status": new_status,
+            "correctness": correct,
+        }
+
+    update_lesson_progress(
+        user_id=user_id,
+        lesson_id=lesson_id,
+        question_id=question_id,
+        answer=student_answer,
+        correct=correct,
+        hint_level=hint_usage,
+        xp_earned=progress_result["xp_earned"],
+        stars_remaining=progress_result["stars_remaining"],
+        new_status=progress_result["status"],
+    )
 
     return JsonResponse({
         "correct": correct,
         "next_prompt": evaluation.get("next_prompt", ""),
         "progress": {
-            "xp": xp,
-            "stars_remaining": stars,
-            "status": status,
+            "xp": progress_result["total_xp"],
+            "stars_remaining": progress_result["stars_remaining"],
+            "status": progress_result["status"],
         },
     })
 
@@ -147,17 +212,14 @@ def lesson_hint(request, lesson_id: str):
 
     question_id = str(payload.get("question_id", "")).strip()
     hint_level = int(payload.get("hint_level", 1))
-    hint_level = max(1, min(hint_level, 3))  # clamp to 1-3
+    hint_level = max(1, min(hint_level, 3))
 
-    # Look up question context for the tutor
     cached = get_lesson(lesson_id)
     question_prompt = ""
-    answer_key = ""
     if cached:
         for q in cached.get("questions", []):
             if q.get("id") == question_id:
                 question_prompt = q.get("prompt", "")
-                answer_key = q.get("answer_key", "")
                 break
 
     try:

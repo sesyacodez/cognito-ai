@@ -18,6 +18,7 @@ SKILL_MODEL_MAP = {
     "decomposer": "DECOMPOSER_MODEL",
     "lesson_generator": "LESSON_GENERATOR_MODEL",
     "socratic_tutor": "SOCRATIC_TUTOR_MODEL",
+    "progress_updater": "PROGRESS_UPDATER_MODEL",
 }
 
 
@@ -104,17 +105,23 @@ def run_skill(skill_name: str, mode: str = "learn", state: dict = None, **kwargs
         AgentError: if the API key is missing, the model fails twice,
                     or the skill output is invalid.
     """
+    skill = _get_skill(skill_name)
+
+    # LOCAL skills are deterministic — bypass OpenRouter entirely.
+    if getattr(skill, "LOCAL", False):
+        try:
+            return skill.run(kwargs, mode=mode)
+        except (ValidationError, Exception) as exc:
+            raise AgentError(f"Local skill '{skill_name}' failed: {exc}") from exc
+
     api_key = os.environ.get("OPENROUTER_API_KEY", "").strip()
     if not api_key:
         raise AgentError(
             "OPENROUTER_API_KEY is not set. Cannot call the skill runner."
         )
 
-    # Use skill-specific model env var if available, else fallback to DECOMPOSER_MODEL
     model_env = SKILL_MODEL_MAP.get(skill_name, "DECOMPOSER_MODEL")
     model = os.environ.get(model_env, os.environ.get("DECOMPOSER_MODEL", DEFAULT_MODEL))
-
-    skill = _get_skill(skill_name)
 
     # Build the system and user messages
     system_prompt = skill.SYSTEM_PROMPTS.get(mode, skill.SYSTEM_PROMPTS.get("learn"))

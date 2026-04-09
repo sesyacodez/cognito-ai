@@ -66,6 +66,14 @@ class SocraticEvaluation(BaseModel):
     hint: str | None = None
 
 
+class ProgressUpdate(BaseModel):
+    xp_earned: int = Field(ge=0)
+    total_xp: int = Field(ge=0)
+    stars_remaining: int = Field(ge=0, le=3)
+    status: str = Field(pattern="^(not_started|in_progress|completed)$")
+    correctness: bool
+
+
 def normalize_decomposer_output(data: dict, mode: str = "learn") -> dict:
     validated = DecomposerOutput.model_validate(data)
     sorted_modules = sorted(validated.roadmap.modules, key=lambda m: m.order)
@@ -108,6 +116,11 @@ def normalize_evaluation_output(data: dict) -> dict:
     return validated.model_dump()
 
 
+def normalize_progress_output(data: dict) -> dict:
+    validated = ProgressUpdate.model_validate(data)
+    return validated.model_dump()
+
+
 __all__ = [
     "DecomposerModule",
     "RoadmapPayload",
@@ -119,5 +132,7 @@ __all__ = [
     "SocraticEvaluation",
     "normalize_lesson_output",
     "normalize_evaluation_output",
+    "ProgressUpdate",
+    "normalize_progress_output",
     "ValidationError",
 ]
