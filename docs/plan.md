@@ -10,9 +10,10 @@
 ## Assumptions
 
 - Sprints are 1 week (Friday to Thursday). Immediate plan covers the next 2 days.
-- Stack: Next.js App Router, Tailwind, Django REST, Supabase Postgres, Firebase Auth (Google OAuth) + Django password auth, Gemini via OpenRouter (agentic skill runner).
-- API contracts in docs/api-contracts.md are the source of truth.
-- Agent skills live in `backend/skills/*.py`; an agent runner in `backend/agent/runner.py` calls OpenRouter with skill specs as tools.
+- **Monorepo layout:** Next.js frontend in `cognito-ai/`; Django API in `backend/`; product and contract docs in `docs/`. The browser reaches Django via Next.js rewrites (`/api/*` → `NEXT_PUBLIC_BACKEND_URL`).
+- Stack: Next.js App Router, Tailwind, Django REST, target Supabase Postgres, Firebase Auth (Google OAuth) + email/password in UI, OpenRouter tool-calling in `backend/agent/runner.py`.
+- API contracts in `docs/api-contracts.md` are the source of truth for HTTP shapes; the root `README.md` summarizes what is implemented vs stubbed.
+- Agent skills live in `backend/skills/*.py`; the runner in `backend/agent/runner.py` calls OpenRouter with skill specs as tools.
 
 ## Sprint 2 (Feb 27 - Mar 5, 2026) - Auth + Login MVP (Missed)
 
@@ -231,7 +232,7 @@
 
 ### Backend/AI Engineer
 
-- Implement Progress_Updater skill for the Nanoclaw agent and ensure consistent XP/stars.
+- Implement Progress_Updater skill for the backend skill runner and ensure consistent XP/stars.
 - Add safety checks for lesson state transitions.
 
 ### Deliverables

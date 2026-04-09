@@ -1,6 +1,8 @@
 # Data Schema
 
-Schema targets Supabase Postgres (managed Postgres).
+**Status:** This is the **target** relational model for learner data (Supabase Postgres or any Postgres behind Django). The Django app under `backend/` may not yet persist every table here; some flows still use in-memory stores. See the repository root `README.md` for the current implementation snapshot.
+
+Schema targets Supabase Postgres (managed Postgres) once fully wired.
 
 ## users
 

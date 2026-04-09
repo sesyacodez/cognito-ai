@@ -2,7 +2,7 @@
 
 ## Overview
 
-The learning flow is driven by an **agentic skill runner** built into the Django backend. Instead of hardcoding prompts per feature, the backend maintains discrete **skill files** (`backend/skills/*.py`). Each skill defines its own input schema and system prompt. The **agent runner** (`backend/agent/runner.py`) sends the user request to Gemini (via OpenRouter) along with the relevant skill specs as **tools**. The model selects and invokes the appropriate skill; the runner executes it and returns the result.
+The learning flow is driven by an **agentic skill runner** built into the Django backend (`backend/agent/runner.py`). Instead of hardcoding prompts per feature, the backend maintains discrete **skill files** (`backend/skills/*.py`). Each skill defines its own input schema and system prompt. The runner calls **OpenRouter** with the skill specs as **tools** (models are configured per skill via env vars). The model selects and invokes the appropriate skill; the runner executes it and returns the result.
 
 This pattern means:
 - No hardcoded prompts scattered through views
@@ -16,7 +16,7 @@ This pattern means:
 Django view (e.g. POST /api/roadmaps)
   → agent/runner.py
       → Loads relevant skill specs (name, description, input schema)
-      → Calls OpenRouter (Gemini) with skills as tools
+      → Calls OpenRouter with skills as tools
       → Model selects a skill and returns structured arguments
       → Runner invokes the skill implementation
       → Validates output (Pydantic)
