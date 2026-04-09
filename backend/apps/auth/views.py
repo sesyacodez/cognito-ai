@@ -5,7 +5,7 @@ from django.conf import settings
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 
-from utils.auth_stub_store import (
+from apps.auth.services import (
     login_password_user,
     register_password_user,
     upsert_firebase_user,

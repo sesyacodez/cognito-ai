@@ -39,13 +39,15 @@
 
 ### Backend Developer
 
-- Implement POST /api/auth/firebase-login (per api-contracts.md).
-- Implement POST /api/auth/login and POST /api/auth/register.
-- Validate Firebase ID token and create session token.
-- Validate email/password and create session token.
-- Add user profile model linkage (Firebase UID -> local user).
-- Add tests for token verification and error cases.
-- Add tests for password auth and registration errors.
+- Implement POST /api/auth/firebase-login (per api-contracts.md). Done in backend/apps/auth/views.py.
+- Implement POST /api/auth/login and POST /api/auth/register. Done in backend/apps/auth/views.py.
+- Validate Firebase ID token and create session token. Done via backend/utils/firebase_auth.py and backend/apps/auth/services.py.
+- Validate email/password and create session token. Done via backend/apps/auth/services.py.
+- Add user profile model linkage (Firebase UID -> local user). Done in backend/apps/users/models.py with persistent user records.
+- Persist session tokens for backend auth. Done in backend/apps/auth/models.py and backend/apps/auth/services.py.
+- Use Supabase env config from backend/.env: SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are loaded in backend/config/settings.py for Supabase-backed deployment config.
+- Add tests for token verification and error cases. Done in backend/tests/test_firebase_auth.py and backend/tests/test_auth_stub.py.
+- Add tests for password auth and registration errors. Done in backend/tests/test_auth_stub.py.
 
 ### Backend/AI Engineer
 
@@ -84,14 +86,14 @@
 
 ### Backend Developer
 
-- Implement POST /api/auth/firebase-login (per api-contracts.md).
-- Implement POST /api/auth/login and POST /api/auth/register.
-- Validate Firebase ID token and create session token.
-- Validate email/password and create session token.
-- Add user profile model linkage (Firebase UID -> local user).
-- Implement Roadmap models and endpoints (GET/POST /api/roadmaps).
-- Enforce per-user authorization.
-- Persist roadmap + module list.
+- Implement POST /api/auth/firebase-login (per api-contracts.md). Done in backend/apps/auth/views.py.
+- Implement POST /api/auth/login and POST /api/auth/register. Done in backend/apps/auth/views.py and backend/apps/auth/services.py.
+- Validate Firebase ID token and create session token. Done via backend/utils/firebase_auth.py and backend/apps/auth/services.py.
+- Validate email/password and create session token. Done via backend/apps/auth/services.py.
+- Add user profile model linkage (Firebase UID -> local user). Done in backend/apps/users/models.py.
+- Implement Roadmap models and endpoints (GET/POST /api/roadmaps). Done in backend/apps/roadmaps/models.py, backend/apps/roadmaps/views.py, and backend/apps/roadmaps/services.py.
+- Enforce per-user authorization. Done with backend session tokens and dev Firebase fallback in the roadmap auth helper.
+- Persist roadmap + module list. Done through the roadmaps and modules tables plus migrations.
 
 ### Backend/AI Engineer
 
@@ -113,9 +115,7 @@
 - Users can create and view roadmaps.
 - Roadmap data persisted and authorized.
 - UI and API flow demoable without AI.
-- Stub API server (Django) serving placeholder roadmap responses for frontend integration.
-- Stub auth API server (Django) serving register/login/firebase-login responses for frontend integration.
-- API smoke test coverage for stub auth + roadmap contract paths.
+- API smoke test coverage for auth + roadmap contract paths.
 - Env-gated Firebase fallback behavior documented for local vs non-dev environments.
 
 ## Sprint 3b (Mar 13 - Mar 19, 2026) - Decomposer + UX Polish
@@ -184,10 +184,10 @@
 ### Backend Developer
 
 - Implement lesson models and endpoints:
-  - GET /api/lessons/{lesson_id}
-  - POST /api/lessons/{lesson_id}/answer
-  - POST /api/lessons/{lesson_id}/hint
-- Persist lesson state and progress updates.
+  - GET /api/lessons/{lesson_id}. Done in backend/apps/lessons/models.py, backend/apps/lessons/views.py, backend/apps/lessons/services.py.
+  - POST /api/lessons/{lesson_id}/answer. Done in backend/apps/lessons/models.py, backend/apps/lessons/views.py, backend/apps/lessons/services.py.
+  - POST /api/lessons/{lesson_id}/hint. Done in backend/apps/lessons/models.py, backend/apps/lessons/views.py, backend/apps/lessons/services.py.
+- Persist lesson state and progress updates. Done through backend/apps/lessons/models.py and the lesson state / question attempt tables.
 
 ### Backend/AI Engineer
 
@@ -226,9 +226,9 @@
 
 ### Backend Developer
 
-- Implement /api/dashboard aggregation endpoint.
-- Ensure data schema documented in docs/data-schema.md.
-- Add integration tests for progress persistence.
+- Implement /api/dashboard aggregation endpoint. Done in backend/apps/dashboard/views.py and backend/apps/dashboard/services.py.
+- Ensure data schema documented in docs/data-schema.md. Done in docs/data-schema.md.
+- Add integration tests for progress persistence. Done in backend/tests/test_api_contract_smoke.py and backend/tests/test_dashboard.py.
 
 ### Backend/AI Engineer
 

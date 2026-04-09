@@ -1,22 +1,72 @@
-"""
-In-memory store for generated lessons to ensure consistency during development.
-"""
+"""Compatibility wrappers for the database-backed lesson storage layer."""
 
-# Dict mapping lesson_id (UUID4 string) -> lesson_data (dict)
-_lessons = {}
+from __future__ import annotations
+
+from copy import deepcopy
+
+
+_LESSON_CACHE: dict[str, dict] = {}
+
+
+def _should_fallback_to_memory(exc: Exception) -> bool:
+    return exc.__class__.__name__ == "DatabaseOperationForbidden"
 
 
 def save_lesson(lesson_id: str, lesson_data: dict):
-    """Save a generated lesson to the in-memory store."""
-    _lessons[lesson_id] = lesson_data
+    """Persist a lesson payload and its questions."""
+    from apps.lessons.services import upsert_lesson_payload
+
+    title = str(lesson_data.get("title") or lesson_data.get("module_topic") or lesson_id)
+    module_topic = str(lesson_data.get("module_topic") or lesson_data.get("title") or lesson_id)
+    mode = str(lesson_data.get("mode", "learn"))
+
+    try:
+        lesson = upsert_lesson_payload(
+            lesson_key=lesson_id,
+            lesson_payload=lesson_data,
+            title=title,
+            module_topic=module_topic,
+            mode=mode,
+        )
+    except Exception as exc:
+        if not _should_fallback_to_memory(exc):
+            raise
+        _LESSON_CACHE[lesson_id] = deepcopy(lesson_data)
+        return lesson_data
+
+    _LESSON_CACHE[lesson_id] = deepcopy(lesson_data)
+    return lesson
 
 
 def get_lesson(lesson_id: str) -> dict | None:
-    """Retrieve a lesson from the store by ID."""
-    return _lessons.get(lesson_id)
+    """Retrieve a persisted lesson payload by ID, including answer keys."""
+    from apps.lessons.services import get_lesson_payload
+
+    try:
+        lesson = get_lesson_payload(lesson_id)
+    except Exception as exc:
+        if not _should_fallback_to_memory(exc):
+            raise
+        lesson = None
+
+    if lesson is not None:
+        _LESSON_CACHE[lesson_id] = deepcopy(lesson)
+        return lesson
+
+    cached = _LESSON_CACHE.get(lesson_id)
+    if cached is None:
+        return None
+    return deepcopy(cached)
 
 
 def reset_lesson_store():
     """Clear all stored lessons (useful for tests)."""
-    global _lessons
-    _lessons = {}
+    from apps.lessons.services import reset_lesson_store as reset_lessons
+
+    try:
+        reset_lessons()
+    except Exception as exc:
+        if not _should_fallback_to_memory(exc):
+            raise
+
+    _LESSON_CACHE.clear()

@@ -1,13 +1,15 @@
 import json
 from unittest.mock import patch
 
-from django.test import SimpleTestCase, override_settings
+from django.test import TestCase, override_settings
 
+from apps.auth.models import SessionToken
+from apps.users.models import User
 from utils.auth_stub_store import reset_auth_store
 from utils.firebase_auth import FirebaseAuthError
 
 
-class AuthStubTests(SimpleTestCase):
+class AuthStubTests(TestCase):
     def setUp(self):
         reset_auth_store()
 
@@ -29,6 +31,38 @@ class AuthStubTests(SimpleTestCase):
         self.assertIn("session_token", payload)
         self.assertEqual(payload["user"]["email"], "student@example.com")
         self.assertEqual(payload["user"]["name"], "Student")
+
+        user = User.objects.get(email="student@example.com")
+        self.assertEqual(user.auth_provider, "password")
+        self.assertIsNotNone(user.password_hash)
+        self.assertEqual(SessionToken.objects.filter(user=user).count(), 1)
+
+    def test_register_rejects_duplicate_email(self):
+        self.client.post(
+            "/api/auth/register",
+            data=json.dumps(
+                {
+                    "email": "student@example.com",
+                    "password": "secret-123",
+                    "name": "Student",
+                }
+            ),
+            content_type="application/json",
+        )
+
+        response = self.client.post(
+            "/api/auth/register",
+            data=json.dumps(
+                {
+                    "email": "student@example.com",
+                    "password": "secret-456",
+                    "name": "Student Two",
+                }
+            ),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 409)
 
     def test_login_returns_session_and_user(self):
         self.client.post(
@@ -59,7 +93,67 @@ class AuthStubTests(SimpleTestCase):
         self.assertIn("session_token", payload)
         self.assertEqual(payload["user"]["email"], "student@example.com")
 
-    def test_firebase_login_accepts_dev_token(self):
+        user = User.objects.get(email="student@example.com")
+        self.assertEqual(SessionToken.objects.filter(user=user).count(), 2)
+
+    def test_login_rejects_invalid_credentials(self):
+        self.client.post(
+            "/api/auth/register",
+            data=json.dumps(
+                {
+                    "email": "student@example.com",
+                    "password": "secret-123",
+                    "name": "Student",
+                }
+            ),
+            content_type="application/json",
+        )
+
+        response = self.client.post(
+            "/api/auth/login",
+            data=json.dumps(
+                {
+                    "email": "student@example.com",
+                    "password": "wrong-password",
+                }
+            ),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 401)
+
+    @patch(
+        "apps.auth.views.verify_firebase_token",
+        return_value={
+            "uid": "firebase-uid-1",
+            "email": "firebase@example.com",
+            "name": "Firebase Student",
+        },
+    )
+    def test_firebase_login_links_verified_user(self, _mock_verify):
+        response = self.client.post(
+            "/api/auth/firebase-login",
+            data=json.dumps({"id_token": "dev-token-123"}),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertIn("session_token", payload)
+        self.assertIn("user", payload)
+        self.assertEqual(payload["user"]["email"], "firebase@example.com")
+
+        user = User.objects.get(email="firebase@example.com")
+        self.assertEqual(user.firebase_uid, "firebase-uid-1")
+        self.assertEqual(user.auth_provider, "firebase")
+        self.assertEqual(SessionToken.objects.filter(user=user).count(), 1)
+
+    @override_settings(AUTH_STUB_ALLOW_FIREBASE_FALLBACK=True)
+    @patch(
+        "apps.auth.views.verify_firebase_token",
+        side_effect=FirebaseAuthError("invalid"),
+    )
+    def test_firebase_login_accepts_dev_token(self, _mock_verify):
         response = self.client.post(
             "/api/auth/firebase-login",
             data=json.dumps({"id_token": "dev-token-123"}),
@@ -71,6 +165,10 @@ class AuthStubTests(SimpleTestCase):
         self.assertIn("session_token", payload)
         self.assertIn("user", payload)
         self.assertIn("email", payload["user"])
+
+        user = User.objects.get(email=payload["user"]["email"])
+        self.assertTrue(user.firebase_uid.startswith("fb-"))
+        self.assertEqual(user.auth_provider, "firebase")
 
     @override_settings(AUTH_STUB_ALLOW_FIREBASE_FALLBACK=False)
     @patch(

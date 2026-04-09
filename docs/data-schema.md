@@ -16,6 +16,15 @@ Schema targets Supabase Postgres (managed Postgres) once fully wired.
 - name: string
 - created_at: timestamp
 
+## auth_sessions
+
+- id: uuid, primary key
+- user_id: uuid, foreign key -> users.id
+- token_hash: string, unique
+- created_at: timestamp
+- expires_at: timestamp
+- revoked_at: timestamp, nullable
+
 ## roadmaps
 
 - id: uuid, primary key
@@ -35,17 +44,23 @@ Schema targets Supabase Postgres (managed Postgres) once fully wired.
 ## lessons
 
 - id: uuid, primary key
-- module_id: uuid, foreign key -> modules.id
+- lesson_key: string, unique, public lesson identifier used by /api/lessons/{lesson_id}
 - title: string
+- module_topic: string
+- mode: string (learn | solve)
 - micro_theory: text
+- created_at: timestamp
+- updated_at: timestamp
 
 ## questions
 
 - id: uuid, primary key
 - lesson_id: uuid, foreign key -> lessons.id
+- question_key: string, public question identifier returned by the API
 - prompt: text
 - difficulty: string (easy | medium | hard)
 - answer_key: text
+- position: int
 
 ## lesson_states
 
@@ -59,6 +74,7 @@ Tracks per-user, per-lesson progress. Status transitions are validated: `not_sta
 - xp_earned: int (cumulative across all question attempts in this lesson)
 - answered_questions: text[] (list of question IDs answered correctly)
 - last_question_id: uuid, nullable
+- created_at: timestamp
 - updated_at: timestamp
 
 ### XP calculation (Progress_Updater skill)
@@ -83,7 +99,7 @@ Stars start at 3 per lesson and are decremented by 1 for each hint tier used. Mi
 - lesson_state_id: uuid, foreign key -> lesson_states.id
 - question_id: uuid, foreign key -> questions.id
 - answer: text
-- correct: boolean
+- correct: boolean, nullable
 - hint_level: int
 - created_at: timestamp
 

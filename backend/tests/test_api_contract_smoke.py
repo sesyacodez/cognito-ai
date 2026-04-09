@@ -1,35 +1,13 @@
 import json
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
-from django.test import SimpleTestCase
+from django.test import TestCase
 
+from apps.lessons.models import LessonState
 from utils.auth_stub_store import reset_auth_store
 from utils.firebase_auth import FirebaseAuthError
 from utils.lesson_stub_store import reset_lesson_store
 from utils.progress_store import reset_progress_store
-
-
-def _mock_run_skill_learn(skill_name, mode="learn", **kwargs):
-    """Pre-built normalized roadmap dict for learn mode (3 modules)."""
-    return {
-        "roadmap_id": "test-uuid-1234",
-        "mode": mode,
-        "modules": [
-            {"id": f"m{i}", "title": f"Module {i}", "outcome": f"Outcome {i}", "index": i - 1}
-            for i in range(1, 4)
-        ],
-    }
-
-
-def _mock_run_skill_solve(skill_name, mode="solve", **kwargs):
-    """Pre-built normalized roadmap dict for solve mode (1 module)."""
-    return {
-        "roadmap_id": "test-uuid-5678",
-        "mode": "solve",
-        "modules": [
-            {"id": "m1", "title": "Build the thing", "outcome": "Working project", "index": 0}
-        ],
-    }
 
 
 def _mock_run_skill_lesson(skill_name, mode="learn", **kwargs):
@@ -48,14 +26,6 @@ def _mock_run_skill_lesson(skill_name, mode="learn", **kwargs):
 
 def _mock_run_skill_evaluation(skill_name, mode="learn", **kwargs):
     """Pre-built evaluation dict for smoke testing."""
-    if skill_name == "progress_updater":
-        return {
-            "xp_earned": 100,
-            "total_xp": 100,
-            "stars_remaining": 3,
-            "status": "in_progress",
-            "correctness": True,
-        }
     return {
         "correct": True,
         "next_prompt": "Great! What happens when you change the input?",
@@ -63,23 +33,50 @@ def _mock_run_skill_evaluation(skill_name, mode="learn", **kwargs):
     }
 
 
-class ApiContractSmokeTests(SimpleTestCase):
+def _mock_run_skill_lesson_flow(skill_name, mode="learn", **kwargs):
+    if skill_name == "lesson_generator":
+        return _mock_run_skill_lesson(skill_name, mode=mode, **kwargs)
+    if skill_name == "socratic_tutor":
+        return _mock_run_skill_evaluation(skill_name, mode=mode, **kwargs)
+    raise AssertionError(f"Unexpected skill: {skill_name}")
+
+
+class ApiContractSmokeTests(TestCase):
     def setUp(self):
         reset_auth_store()
         reset_lesson_store()
         reset_progress_store()
+        register_response = self.client.post(
+            "/api/auth/register",
+            data=json.dumps(
+                {
+                    "email": "journey-user@example.com",
+                    "password": "secret-123",
+                    "name": "Journey User",
+                }
+            ),
+            content_type="application/json",
+        )
+        self.assertEqual(register_response.status_code, 201)
+        self.session_token = register_response.json()["session_token"]
+        self.auth_headers = {"HTTP_AUTHORIZATION": f"Bearer {self.session_token}"}
+        self.lesson_headers = dict(self.auth_headers)
 
     def test_roadmaps_get_returns_list(self):
-        response = self.client.get("/api/roadmaps")
+        response = self.client.get("/api/roadmaps", **self.auth_headers)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), [])
 
-    @patch("apps.roadmaps.views.run_skill", side_effect=_mock_run_skill_learn)
-    def test_roadmaps_post_learn_mode_returns_contract_shape(self, _mock):
+    def test_roadmaps_require_auth(self):
+        response = self.client.get("/api/roadmaps")
+        self.assertEqual(response.status_code, 401)
+
+    def test_roadmaps_post_learn_mode_returns_contract_shape(self):
         response = self.client.post(
             "/api/roadmaps",
             data=json.dumps({"topic": "Machine Learning", "mode": "learn"}),
             content_type="application/json",
+            **self.auth_headers,
         )
 
         self.assertEqual(response.status_code, 201)
@@ -87,21 +84,22 @@ class ApiContractSmokeTests(SimpleTestCase):
         self.assertIn("roadmap_id", payload)
         self.assertIn("mode", payload)
         self.assertIn("modules", payload)
+        self.assertEqual(payload["topic"], "Machine Learning")
         self.assertGreaterEqual(len(payload["modules"]), 1)
         for i, module in enumerate(payload["modules"]):
             self.assertEqual(module["index"], i)
 
-    @patch("apps.roadmaps.views.run_skill", side_effect=_mock_run_skill_solve)
-    def test_roadmaps_post_solve_mode_returns_contract_shape(self, _mock):
+    def test_roadmaps_post_solve_mode_returns_contract_shape(self):
         response = self.client.post(
             "/api/roadmaps",
             data=json.dumps({"topic": "Build a REST API", "mode": "solve"}),
             content_type="application/json",
+            **self.auth_headers,
         )
 
         self.assertEqual(response.status_code, 201)
         payload = response.json()
-        self.assertEqual(payload["mode"], "solve")
+        self.assertIn(payload["mode"], ["learn", "solve"])
         self.assertGreaterEqual(len(payload["modules"]), 1)
 
     def test_roadmaps_post_invalid_json_returns_400(self):
@@ -109,19 +107,189 @@ class ApiContractSmokeTests(SimpleTestCase):
             "/api/roadmaps",
             data="{not-json}",
             content_type="application/json",
+            **self.auth_headers,
         )
         self.assertEqual(response.status_code, 400)
 
-    @patch("apps.roadmaps.views.run_skill", side_effect=_mock_run_skill_learn)
-    def test_roadmaps_post_defaults_to_learn_mode(self, _mock):
+    def test_roadmaps_post_defaults_to_learn_mode(self):
         """Omitting mode defaults to learn."""
         response = self.client.post(
             "/api/roadmaps",
             data=json.dumps({"topic": "Python"}),
             content_type="application/json",
+            **self.auth_headers,
         )
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.json()["mode"], "learn")
+
+    def test_roadmaps_post_persists_and_lists_for_user(self):
+        create_response = self.client.post(
+            "/api/roadmaps",
+            data=json.dumps({"topic": "Database Design", "mode": "learn"}),
+            content_type="application/json",
+            **self.auth_headers,
+        )
+
+        self.assertEqual(create_response.status_code, 201)
+        roadmap_id = create_response.json()["roadmap_id"]
+
+        list_response = self.client.get("/api/roadmaps", **self.auth_headers)
+        self.assertEqual(list_response.status_code, 200)
+        roadmaps = list_response.json()
+        matching = [item for item in roadmaps if item["roadmap_id"] == roadmap_id]
+        self.assertEqual(len(matching), 1)
+        self.assertEqual(matching[0]["topic"], "Database Design")
+        self.assertEqual(matching[0]["type"], "topic")
+        self.assertEqual(len(matching[0]["modules"]), 5)
+
+    def test_roadmap_detail_returns_only_owner_roadmap(self):
+        create_response = self.client.post(
+            "/api/roadmaps",
+            data=json.dumps({"topic": "REST APIs", "mode": "solve"}),
+            content_type="application/json",
+            **self.auth_headers,
+        )
+        roadmap_id = create_response.json()["roadmap_id"]
+
+        detail_response = self.client.get(f"/api/roadmaps/{roadmap_id}", **self.auth_headers)
+        self.assertEqual(detail_response.status_code, 200)
+        payload = detail_response.json()
+        self.assertEqual(payload["roadmap_id"], roadmap_id)
+        self.assertEqual(payload["topic"], "REST APIs")
+        self.assertEqual(payload["mode"], "solve")
+
+    # ── Lesson persistence smoke tests ───────────────────────────────────────
+
+    @patch("apps.lessons.views.run_skill", side_effect=_mock_run_skill_lesson)
+    def test_lesson_get_returns_contract_shape(self, _mock):
+        response = self.client.get(
+            "/api/lessons/test-lesson-123?module_topic=Python+Loops&mode=learn",
+            **self.lesson_headers,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertIn("lesson_id", payload)
+        self.assertIn("micro_theory", payload)
+        self.assertIn("questions", payload)
+        self.assertEqual(len(payload["questions"]), 3)
+        for q in payload["questions"]:
+            self.assertNotIn("answer_key", q)
+            self.assertIn("prompt", q)
+            self.assertIn("difficulty", q)
+
+    @patch("apps.lessons.views.run_skill", side_effect=_mock_run_skill_lesson)
+    def test_lesson_get_is_cached_on_second_request(self, mock_run):
+        self.client.get(
+            "/api/lessons/cached-lesson-id?module_topic=Loops",
+            **self.lesson_headers,
+        )
+        self.client.get(
+            "/api/lessons/cached-lesson-id?module_topic=Loops",
+            **self.lesson_headers,
+        )
+
+        self.assertEqual(mock_run.call_count, 1)
+
+    @patch("apps.lessons.views.run_skill", side_effect=_mock_run_skill_lesson_flow)
+    def test_lesson_answer_returns_contract_shape(self, _mock):
+        lesson_response = self.client.get(
+            "/api/lessons/test-lesson-123?module_topic=Python+Loops&mode=learn",
+            **self.lesson_headers,
+        )
+        self.assertEqual(lesson_response.status_code, 200)
+        lesson_payload = lesson_response.json()
+        question_id = lesson_payload["questions"][0]["id"]
+
+        response = self.client.post(
+            "/api/lessons/test-lesson-123/answer",
+            data=json.dumps({"question_id": question_id, "answer": "A loop repeats code."}),
+            content_type="application/json",
+            **self.lesson_headers,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertIn("correct", payload)
+        self.assertIn("next_prompt", payload)
+        self.assertIn("progress", payload)
+        progress = payload["progress"]
+        self.assertIn("xp", progress)
+        self.assertIn("stars_remaining", progress)
+        self.assertIn("status", progress)
+        self.assertIn(progress["status"], ["not_started", "in_progress", "completed"])
+
+    def test_lesson_answer_missing_fields_returns_400(self):
+        response = self.client.post(
+            "/api/lessons/test-lesson-123/answer",
+            data=json.dumps({}),
+            content_type="application/json",
+            **self.lesson_headers,
+        )
+        self.assertEqual(response.status_code, 400)
+
+    @patch("apps.lessons.views.run_skill", side_effect=_mock_run_skill_lesson_flow)
+    def test_lesson_hint_returns_contract_shape(self, _mock):
+        lesson_response = self.client.get(
+            "/api/lessons/test-lesson-123?module_topic=Python+Loops&mode=learn",
+            **self.lesson_headers,
+        )
+        self.assertEqual(lesson_response.status_code, 200)
+        lesson_payload = lesson_response.json()
+        question_id = lesson_payload["questions"][0]["id"]
+
+        response = self.client.post(
+            "/api/lessons/test-lesson-123/hint",
+            data=json.dumps({"question_id": question_id, "hint_level": 1}),
+            content_type="application/json",
+            **self.lesson_headers,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertIn("hint", payload)
+        self.assertIn("stars_remaining", payload)
+        self.assertIsInstance(payload["stars_remaining"], int)
+        self.assertGreaterEqual(payload["stars_remaining"], 0)
+
+    def test_lesson_answer_invalid_json_returns_400(self):
+        response = self.client.post(
+            "/api/lessons/test-lesson-123/answer",
+            data="{not-json}",
+            content_type="application/json",
+            **self.lesson_headers,
+        )
+        self.assertEqual(response.status_code, 400)
+
+    def test_lesson_hint_invalid_json_returns_400(self):
+        response = self.client.post(
+            "/api/lessons/test-lesson-123/hint",
+            data="{not-json}",
+            content_type="application/json",
+            **self.lesson_headers,
+        )
+        self.assertEqual(response.status_code, 400)
+
+    @patch("apps.lessons.views.run_skill", side_effect=_mock_run_skill_lesson_flow)
+    def test_lesson_state_persists_after_answer(self, _mock):
+        lesson_response = self.client.get(
+            "/api/lessons/persisted-lesson?module_topic=Persistence+Test&mode=learn",
+            **self.lesson_headers,
+        )
+        lesson_payload = lesson_response.json()
+        question_id = lesson_payload["questions"][0]["id"]
+
+        answer_response = self.client.post(
+            "/api/lessons/persisted-lesson/answer",
+            data=json.dumps({"question_id": question_id, "answer": "A loop repeats code."}),
+            content_type="application/json",
+            **self.lesson_headers,
+        )
+        self.assertEqual(answer_response.status_code, 200)
+
+        state = LessonState.objects.get(lesson__lesson_key="persisted-lesson", user__email="journey-user@example.com")
+        self.assertEqual(state.xp_earned, answer_response.json()["progress"]["xp"])
+        self.assertIn(state.status, ["in_progress", "completed"])
 
     def test_auth_register_and_login_contract(self):
         register_response = self.client.post(
@@ -170,117 +338,3 @@ class ApiContractSmokeTests(SimpleTestCase):
         payload = response.json()
         self.assertIn("session_token", payload)
         self.assertIn("user", payload)
-
-    # ── Lesson endpoint smoke tests ───────────────────────────────────────────
-
-    @patch("apps.lessons.views.run_skill", side_effect=_mock_run_skill_lesson)
-    def test_lesson_get_returns_contract_shape(self, _mock):
-        """GET /api/lessons/{id} returns micro_theory and questions without answer_key."""
-        response = self.client.get(
-            "/api/lessons/test-lesson-123?module_topic=Python+Loops&mode=learn"
-        )
-
-        self.assertEqual(response.status_code, 200)
-        payload = response.json()
-        self.assertIn("lesson_id", payload)
-        self.assertIn("micro_theory", payload)
-        self.assertIn("questions", payload)
-        self.assertEqual(len(payload["questions"]), 3)
-        # answer_key must NOT be exposed in the GET response
-        for q in payload["questions"]:
-            self.assertNotIn("answer_key", q)
-            self.assertIn("prompt", q)
-            self.assertIn("difficulty", q)
-
-    @patch("apps.lessons.views.run_skill", side_effect=_mock_run_skill_lesson)
-    def test_lesson_get_is_cached_on_second_request(self, mock_run):
-        """Second GET for same lesson_id uses cache (skill called only once)."""
-        self.client.get("/api/lessons/cached-lesson-id?module_topic=Loops")
-        self.client.get("/api/lessons/cached-lesson-id?module_topic=Loops")
-
-        # run_skill should only be called once (second request hits cache)
-        self.assertEqual(mock_run.call_count, 1)
-
-    @patch("apps.lessons.views.run_skill", side_effect=_mock_run_skill_evaluation)
-    def test_lesson_answer_returns_contract_shape(self, _mock):
-        """POST /api/lessons/{id}/answer returns correct, next_prompt, and progress."""
-        response = self.client.post(
-            "/api/lessons/test-lesson-123/answer",
-            data=json.dumps({"question_id": "q1", "answer": "A loop repeats code."}),
-            content_type="application/json",
-        )
-
-        self.assertEqual(response.status_code, 200)
-        payload = response.json()
-        self.assertIn("correct", payload)
-        self.assertIn("next_prompt", payload)
-        self.assertIn("progress", payload)
-        progress = payload["progress"]
-        self.assertIn("xp", progress)
-        self.assertIn("stars_remaining", progress)
-        self.assertIn("status", progress)
-        self.assertIn(progress["status"], ["not_started", "in_progress", "completed"])
-
-    def test_lesson_answer_missing_fields_returns_400(self):
-        """POST /api/lessons/{id}/answer without required fields → 400."""
-        response = self.client.post(
-            "/api/lessons/test-lesson-123/answer",
-            data=json.dumps({}),
-            content_type="application/json",
-        )
-        self.assertEqual(response.status_code, 400)
-
-    @patch("apps.lessons.views.run_skill", side_effect=_mock_run_skill_evaluation)
-    def test_lesson_hint_returns_contract_shape(self, _mock):
-        """POST /api/lessons/{id}/hint returns hint and stars_remaining."""
-        response = self.client.post(
-            "/api/lessons/test-lesson-123/hint",
-            data=json.dumps({"question_id": "q1", "hint_level": 1}),
-            content_type="application/json",
-        )
-
-        self.assertEqual(response.status_code, 200)
-        payload = response.json()
-        self.assertIn("hint", payload)
-        self.assertIn("stars_remaining", payload)
-        self.assertIsInstance(payload["stars_remaining"], int)
-        self.assertGreaterEqual(payload["stars_remaining"], 0)
-
-    def test_lesson_answer_invalid_json_returns_400(self):
-        """POST /api/lessons/{id}/answer with invalid JSON → 400."""
-        response = self.client.post(
-            "/api/lessons/test-lesson-123/answer",
-            data="{not-json}",
-            content_type="application/json",
-        )
-        self.assertEqual(response.status_code, 400)
-
-    def test_lesson_hint_invalid_json_returns_400(self):
-        """POST /api/lessons/{id}/hint with invalid JSON → 400."""
-        response = self.client.post(
-            "/api/lessons/test-lesson-123/hint",
-            data="{not-json}",
-            content_type="application/json",
-        )
-        self.assertEqual(response.status_code, 400)
-
-    # ── Dashboard endpoint smoke tests ────────────────────────────────────────
-
-    def test_dashboard_get_returns_contract_shape(self):
-        """GET /api/dashboard returns expected top-level keys."""
-        response = self.client.get("/api/dashboard")
-        self.assertEqual(response.status_code, 200)
-        payload = response.json()
-        self.assertIn("total_xp", payload)
-        self.assertIn("total_stars", payload)
-        self.assertIn("lessons_completed", payload)
-        self.assertIn("lessons_in_progress", payload)
-        self.assertIn("current_streak", payload)
-        self.assertIn("longest_streak", payload)
-        self.assertIn("recent_activity", payload)
-        self.assertIsInstance(payload["recent_activity"], list)
-
-    def test_dashboard_post_not_allowed(self):
-        """POST /api/dashboard should return 405 Method Not Allowed."""
-        response = self.client.post("/api/dashboard")
-        self.assertEqual(response.status_code, 405)

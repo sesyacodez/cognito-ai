@@ -9,6 +9,8 @@ load_dotenv(BASE_DIR / ".env")
 
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "dev-only-insecure-key")
 DEBUG = os.getenv("DJANGO_DEBUG", "true").lower() == "true"
+SUPABASE_URL = os.getenv("SUPABASE_URL", "")
+SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
 _auth_stub_fallback_env = os.getenv("AUTH_STUB_ALLOW_FIREBASE_FALLBACK")
 if _auth_stub_fallback_env is None:
     AUTH_STUB_ALLOW_FIREBASE_FALLBACK = DEBUG
