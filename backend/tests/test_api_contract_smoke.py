@@ -26,6 +26,14 @@ def _mock_run_skill_lesson(skill_name, mode="learn", **kwargs):
 
 def _mock_run_skill_evaluation(skill_name, mode="learn", **kwargs):
     """Pre-built evaluation dict for smoke testing."""
+    if skill_name == "progress_updater":
+        return {
+            "xp_earned": 100,
+            "total_xp": 100,
+            "stars_remaining": 3,
+            "status": "in_progress",
+            "correctness": True,
+        }
     return {
         "correct": True,
         "next_prompt": "Great! What happens when you change the input?",
@@ -338,3 +346,24 @@ class ApiContractSmokeTests(TestCase):
         payload = response.json()
         self.assertIn("session_token", payload)
         self.assertIn("user", payload)
+
+    # ── Dashboard endpoint smoke tests ────────────────────────────────────────
+
+    def test_dashboard_get_returns_contract_shape(self):
+        """GET /api/dashboard returns expected top-level keys."""
+        response = self.client.get("/api/dashboard")
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertIn("total_xp", payload)
+        self.assertIn("total_stars", payload)
+        self.assertIn("lessons_completed", payload)
+        self.assertIn("lessons_in_progress", payload)
+        self.assertIn("current_streak", payload)
+        self.assertIn("longest_streak", payload)
+        self.assertIn("recent_activity", payload)
+        self.assertIsInstance(payload["recent_activity"], list)
+
+    def test_dashboard_post_not_allowed(self):
+        """POST /api/dashboard should return 405 Method Not Allowed."""
+        response = self.client.post("/api/dashboard")
+        self.assertEqual(response.status_code, 405)
