@@ -298,7 +298,8 @@ export default function LearningWorkspace() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => router.back()}
-              className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-white hover:bg-gray-700/30 transition"
+              className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-white hover:bg-gray-700/30 transition focus:outline-none focus:ring-2 focus:ring-cyan-500"
+              aria-label="Go back"
               title="Go back"
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
@@ -365,7 +366,9 @@ export default function LearningWorkspace() {
           <div className="px-6 py-3">
             <button
               onClick={() => setShowTheory(!showTheory)}
-              className="flex items-center gap-2 text-sm font-medium text-gray-300 hover:text-white transition group"
+              className="flex items-center gap-2 text-sm font-medium text-gray-300 hover:text-white transition group focus:outline-none focus:ring-2 focus:ring-cyan-500 rounded-lg p-1 -m-1"
+              aria-expanded={showTheory}
+              aria-controls="micro-theory-content"
             >
               <div className="w-6 h-6 rounded bg-cyan-500/10 flex items-center justify-center group-hover:bg-cyan-500/20 transition">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
@@ -406,7 +409,7 @@ export default function LearningWorkspace() {
           {/* Question navigation pills */}
           <div className="px-6 py-3">
             <div className="flex items-center gap-2 flex-wrap">
-              {lesson.questions.map((q, i) => {
+              {lesson.questions.map((q: any, i: number) => {
                 const qs = questionStates[q.id];
                 const isActive = i === currentQuestionIndex;
                 const isDone = qs?.submitted;
@@ -428,7 +431,9 @@ export default function LearningWorkspace() {
                   <button
                     key={q.id}
                     onClick={() => goToQuestion(i)}
-                    className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${pillColor}`}
+                    className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition-all focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-[#0b0f1e] ${pillColor}`}
+                    aria-label={`Go to Question ${i + 1}`}
+                    aria-current={isActive ? "step" : undefined}
                   >
                     Q{i + 1}
                     {isDone && isCorrect && " ✓"}
@@ -654,7 +659,7 @@ export default function LearningWorkspace() {
               Question Overview
             </h3>
             <div className="space-y-2">
-              {lesson.questions.map((q, i) => {
+              {lesson.questions.map((q: any, i: number) => {
                 const qs = questionStates[q.id];
                 return (
                   <button
@@ -688,7 +693,7 @@ export default function LearningWorkspace() {
           <div className="px-5 pb-5 pt-2 flex-shrink-0">
             <button
               onClick={() => router.push("/insight-hub")}
-              className="w-full py-3 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-medium rounded-xl transition-all text-sm shadow-lg shadow-cyan-500/20"
+              className="w-full py-3 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-medium rounded-xl transition-all text-sm shadow-lg shadow-cyan-500/20 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-[#0d1220]"
             >
               🎉 Lesson Complete! Return to Hub
             </button>
@@ -822,8 +827,8 @@ function QuestionCard({
         <textarea
           ref={inputRef}
           value={state.answer}
-          onChange={(e) => onAnswerChange(e.target.value)}
-          onKeyDown={(e) => {
+          onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => onAnswerChange(e.target.value)}
+          onKeyDown={(e: React.KeyboardEvent<HTMLTextAreaElement>) => {
             if (e.key === "Enter" && !e.shiftKey && !state.submitted) {
               e.preventDefault();
               onSubmit();
@@ -832,7 +837,8 @@ function QuestionCard({
           placeholder="Type your answer here..."
           disabled={state.submitted || state.isSubmitting}
           rows={3}
-          className="w-full bg-transparent text-sm text-white placeholder-gray-600 outline-none resize-none p-3 disabled:opacity-60"
+          aria-label="Your answer"
+          className="w-full bg-transparent text-sm text-white placeholder-gray-600 outline-none resize-none p-3 disabled:opacity-60 focus:ring-0"
         />
 
         {/* Checking indicator */}
@@ -852,7 +858,8 @@ function QuestionCard({
             <button
               onClick={onHint}
               disabled={state.hintLevel >= 3 || state.isLoadingHint}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-amber-500/10 text-amber-300 border border-amber-500/20 hover:bg-amber-500/20 transition disabled:opacity-40 disabled:cursor-not-allowed"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-amber-500/10 text-amber-300 border border-amber-500/20 hover:bg-amber-500/20 transition disabled:opacity-40 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 focus:ring-offset-[#111830]"
+              aria-label={`Request hint ${state.hintLevel + 1}`}
             >
               {state.isLoadingHint ? (
                 <div className="w-3 h-3 border border-amber-400 border-t-transparent rounded-full animate-spin" />
@@ -880,7 +887,7 @@ function QuestionCard({
               disabled={
                 !state.answer.trim() || state.isSubmitting
               }
-              className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium bg-cyan-600 hover:bg-cyan-500 text-white transition disabled:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed"
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium bg-cyan-600 hover:bg-cyan-500 text-white transition disabled:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-[#111830]"
             >
               {state.isSubmitting ? (
                 <>
@@ -908,7 +915,7 @@ function QuestionCard({
           {state.submitted && !isLast && (
             <button
               onClick={onNext}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium bg-cyan-600 hover:bg-cyan-500 text-white transition animate-pulse-glow"
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium bg-cyan-600 hover:bg-cyan-500 text-white transition animate-pulse-glow focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-[#111830]"
             >
               Next Question
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none">

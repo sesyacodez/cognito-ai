@@ -175,8 +175,33 @@ export default function InsightHub() {
           className={`${sidebarOpen ? "w-64" : "w-0 overflow-hidden"
             } flex-shrink-0 border-r border-gray-700/50 bg-[#080c19] transition-all duration-300 flex flex-col`}
         >
+          {/* sidebar top nav */}
+          <div className="px-2 pt-5 pb-2">
+            <button
+              onClick={() => router.push("/insight-hub")}
+              className="w-full text-left px-3 py-2 rounded-lg text-xs bg-[#0f1224] text-white flex items-center gap-2 group mb-2 border border-blue-500/30 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              aria-label="Navigate to Insight Hub"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="flex-shrink-0 text-blue-400" aria-hidden="true">
+                <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2" />
+                <path d="M16 16l4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+              <span>Insight Hub</span>
+            </button>
+            <button
+              onClick={() => router.push("/dashboard")}
+              className="w-full text-left px-3 py-2 rounded-lg text-xs text-gray-300 hover:bg-[#0f1224] hover:text-white transition flex items-center gap-2 group mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              aria-label="Navigate to Dashboard"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="flex-shrink-0 text-gray-500 group-hover:text-blue-400 transition" aria-hidden="true">
+                <path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+              <span>Dashboard</span>
+            </button>
+          </div>
+
           {/* sidebar header */}
-          <div className="flex items-center justify-between px-4 pt-5 pb-3">
+          <div className="flex items-center justify-between px-4 pt-2 pb-3">
             <span className="text-sm font-bold text-white tracking-wide">
               Journeys
             </span>
@@ -194,7 +219,8 @@ export default function InsightHub() {
                   ...prev,
                 ]);
               }}
-              className="w-6 h-6 flex items-center justify-center rounded text-gray-400 hover:text-white hover:bg-gray-700/50 transition"
+              className="w-6 h-6 flex items-center justify-center rounded text-gray-400 hover:text-white hover:bg-gray-700/50 transition focus:outline-none focus:ring-2 focus:ring-blue-500"
+              aria-label="New journey"
               title="New journey"
             >
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
@@ -205,7 +231,7 @@ export default function InsightHub() {
 
           {/* search */}
           <div className="px-3 pb-3">
-            <div className="flex items-center gap-2 rounded-lg bg-[#0f1224] border border-gray-700/50 px-3 py-1.5">
+            <div className="flex items-center gap-2 rounded-lg bg-[#0f1224] border border-gray-700/50 px-3 py-1.5 focus-within:border-blue-500/50 focus-within:ring-1 focus-within:ring-blue-500/50 transition-all">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="text-gray-500 flex-shrink-0">
                 <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2" />
                 <path d="M16 16l4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
@@ -248,7 +274,8 @@ export default function InsightHub() {
           <header className="flex items-center justify-between px-6 py-3 border-b border-gray-700/30">
             <button
               onClick={() => setSidebarOpen((o) => !o)}
-              className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-white hover:bg-gray-700/30 transition"
+              aria-label={sidebarOpen ? "Close sidebar" : "Open sidebar"}
+              className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-white hover:bg-gray-700/30 transition focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
                 <path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
@@ -259,7 +286,10 @@ export default function InsightHub() {
             <div className="relative">
               <button
                 onClick={() => setShowDropdown(!showDropdown)}
-                className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xs font-bold hover:ring-2 ring-blue-500 transition focus:outline-none"
+                aria-haspopup="true"
+                aria-expanded={showDropdown}
+                aria-label="User menu"
+                className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xs font-bold hover:ring-2 ring-blue-500 transition focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#0b0f1e] focus:ring-blue-500"
               >
                 {user?.name?.charAt(0)?.toUpperCase() || "U"}
               </button>
@@ -303,8 +333,8 @@ export default function InsightHub() {
               <button
                 onClick={() => setActiveTab("topic")}
                 className={`px-5 py-1.5 rounded-full text-sm font-medium transition-all duration-200 ${activeTab === "topic"
-                  ? "bg-[#1a2040] text-white shadow-lg"
-                  : "text-gray-400 hover:text-gray-200"
+                  ? "bg-[#1a2040] text-white shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-[#0f1224]"
+                  : "text-gray-400 hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-[#0f1224]"
                   }`}
               >
                 Topic
@@ -312,8 +342,8 @@ export default function InsightHub() {
               <button
                 onClick={() => setActiveTab("problem")}
                 className={`px-5 py-1.5 rounded-full text-sm font-medium transition-all duration-200 ${activeTab === "problem"
-                  ? "bg-[#1a2040] text-white shadow-lg"
-                  : "text-gray-400 hover:text-gray-200"
+                  ? "bg-[#1a2040] text-white shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-[#0f1224]"
+                  : "text-gray-400 hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-[#0f1224]"
                   }`}
               >
                 Problem
@@ -388,7 +418,8 @@ export default function InsightHub() {
                   <button
                     type="submit"
                     disabled={isCreating || !inputValue.trim()}
-                    className="w-8 h-8 flex items-center justify-center rounded-lg bg-blue-600 hover:bg-blue-500 disabled:bg-gray-700 disabled:text-gray-500 text-white transition"
+                    className="w-8 h-8 flex items-center justify-center rounded-lg bg-blue-600 hover:bg-blue-500 disabled:bg-gray-700 disabled:text-gray-500 text-white transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-[#0f1224]"
+                    aria-label="Submit search"
                   >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
                       <path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -525,7 +556,7 @@ function SidebarGroup({
             const qs = new URLSearchParams({ topic: journey.topic, mode: journey.type === "topic" ? "learn" : "solve" });
             window.location.href = `/workspace/${journey.id}?${qs.toString()}`;
           }}
-          className="w-full text-left px-3 py-2 rounded-lg text-xs text-gray-300 hover:bg-[#0f1224] hover:text-white transition flex items-center gap-2 group"
+          className="w-full text-left px-3 py-2 rounded-lg text-xs text-gray-300 hover:bg-[#0f1224] hover:text-white transition flex items-center gap-2 group focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="flex-shrink-0 text-gray-500 group-hover:text-blue-400 transition">
             <rect x="3" y="4" width="18" height="16" rx="2" stroke="currentColor" strokeWidth="1.5" />
