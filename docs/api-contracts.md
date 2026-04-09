@@ -11,7 +11,7 @@ The AI layer is an **OpenRouter tool-calling skill runner** (`backend/agent/runn
 
 ## Not implemented yet
 
-- **`GET /api/dashboard`** — specified below for the product; no matching route in `backend/config/urls.py` at the time of writing. Treat as planned.
+- None — all endpoints below are implemented (Sprint 5 complete).
 
 ---
 
@@ -178,8 +178,45 @@ The AI layer is an **OpenRouter tool-calling skill runner** (`backend/agent/runn
 }
 ```
 
-## Dashboard (planned)
+## Dashboard
 
 ### GET /api/dashboard
 
-- Returns lesson counts, streak info, and progress summaries.
+- Returns lesson counts, streak info, and progress summaries for the authenticated user.
+- Auth: `Authorization: Bearer <user_id>` header. Falls back to `anonymous` when absent.
+
+- Response:
+
+```
+{
+  "total_xp": 0,
+  "total_stars": 0,
+  "lessons_completed": 0,
+  "lessons_in_progress": 0,
+  "current_streak": 0,
+  "longest_streak": 0,
+  "recent_activity": [
+    {
+      "lesson_id": "string",
+      "status": "not_started|in_progress|completed",
+      "xp_earned": 0,
+      "stars_earned": 0,
+      "updated_at": "ISO 8601 timestamp"
+    }
+  ]
+}
+```
+
+- `recent_activity` is capped to the 10 most recent entries, sorted newest-first.
+- `current_streak` counts consecutive days with at least one lesson interaction.
+- XP and stars are aggregated across all lesson_states for the user.
+
+## Progress (internal — used by lesson answer flow)
+
+### Progress_Updater skill
+
+- Called internally after each `POST /api/lessons/{lesson_id}/answer`.
+- Input: `correctness`, `hint_usage`, `timing_seconds`, `current_xp`, `current_status`, `answered_count`, `total_questions`.
+- Output: `xp_earned`, `total_xp`, `stars_remaining`, `status`, `correctness`.
+- This is a LOCAL (deterministic) skill — it does not call OpenRouter.
+- State transitions are safety-checked: `completed` lessons cannot regress to `in_progress`.

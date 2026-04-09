@@ -1,6 +1,47 @@
 """
 Business logic for lesson state transitions, XP calculation, and star management.
+Includes safety checks that prevent invalid state transitions.
 """
+
+
+VALID_TRANSITIONS = {
+    "not_started": {"in_progress", "completed"},
+    "in_progress": {"in_progress", "completed"},
+    "completed": {"completed"},
+}
+
+
+class InvalidTransitionError(Exception):
+    """Raised when a lesson state transition is not allowed."""
+
+
+def validate_transition(current_status: str, target_status: str) -> None:
+    """
+    Validates that transitioning from current_status to target_status is allowed.
+    Raises InvalidTransitionError if the transition is invalid.
+    """
+    allowed = VALID_TRANSITIONS.get(current_status, set())
+    if target_status not in allowed:
+        raise InvalidTransitionError(
+            f"Cannot transition from '{current_status}' to '{target_status}'. "
+            f"Allowed transitions from '{current_status}': {allowed or 'none'}."
+        )
+
+
+def safe_transition_status(
+    current_status: str, answered_count: int, total_questions: int
+) -> str:
+    """
+    Determines the next status with safety validation.
+    If the computed transition is invalid, returns current_status unchanged.
+    """
+    target = transition_status(current_status, answered_count, total_questions)
+    try:
+        validate_transition(current_status, target)
+        return target
+    except InvalidTransitionError:
+        return current_status
+
 
 def calculate_xp(correct: bool, hint_level: int = 0) -> int:
     """
@@ -11,7 +52,7 @@ def calculate_xp(correct: bool, hint_level: int = 0) -> int:
     """
     if not correct:
         return 0
-    
+
     if hint_level == 0:
         return 100
     elif hint_level == 1:
@@ -53,15 +94,12 @@ def evaluate_answer_local(student_answer: str, answer_key: str) -> bool:
     student_clean = student_answer.strip().lower()
     key_clean = answer_key.strip().lower()
 
-    # Empty answers are never correct
     if not student_clean:
         return False
 
-    # Very simple heuristic: if key is in student answer or vice versa
     if key_clean in student_clean or student_clean in key_clean:
         return True
 
-    # If student answer is reasonably long and shares significant words, count it
     if len(student_clean) > 10 and any(word in student_clean for word in key_clean.split()):
         return True
 

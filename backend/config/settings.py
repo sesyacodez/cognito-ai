@@ -29,6 +29,7 @@ INSTALLED_APPS = [
     "apps.users.apps.UsersConfig",
     "apps.roadmaps.apps.RoadmapsConfig",
     "apps.lessons.apps.LessonsConfig",
+    "apps.dashboard.apps.DashboardConfig",
 ]
 
 MIDDLEWARE = [
