@@ -1,106 +1,31 @@
-# Cognito.ai
+# Cognito.ai — Next.js frontend
 
-An adaptive, metacognitive learning platform that replaces direct answer-giving with Socratic, scaffolded tutoring. The goal is to help university students build real understanding by guiding them through structured roadmaps, micro-theory, and tiered hints.
+This directory is the **frontend package** inside the Cognito.ai monorepo. Authoritative architecture, endpoint status, and dev commands for the whole repo are in **[`../README.md`](../README.md)**.
 
-## Product Vision
+## What lives here
 
-- Prevent AI-dependency by never giving direct answers.
-- Decompose complex topics into a 5-module learning roadmap.
-- Persist progress across lessons, including XP, stars, and lesson state.
+- **App Router** routes: `/` (login), `/signup`, `/insight-hub`, `/workspace/[lessonId]`.
+- **Firebase Auth** (Google + email/password) via `lib/AuthContext.tsx` and `lib/firebase.ts`.
+- **API client** helpers: `lib/lessons.ts`, `lib/auth.ts` (local session + `Authorization` header).
+- **PWA** via `@ducanh2912/next-pwa` and `next.config.ts`.
 
-## MVP Scope
+## How the app reaches the backend
 
-- Google authentication via Firebase Auth and backend session exchange.
-- Topic decomposition into exactly 5 modules with outcomes.
-- Socratic lesson flow: micro-theory, 3 difficulty questions, tiered hints.
-- Personal Insight Hub (Library) to resume progress.
-- Progress persistence to a relational database.
+Browser requests to **`/api/*`** are rewritten to **`NEXT_PUBLIC_BACKEND_URL`** (default `http://localhost:8000`). Run the Django app from `../backend/` on that origin, or point the env var at your deployed API.
 
-## User Flow
-
-1. Sign in with Google.
-2. Enter a topic or a specific problem.
-3. Review the generated roadmap and start a module.
-4. Work through micro-theory and guided questions with hints.
-5. Finish with reflection and save progress to the library.
-
-## Experience Principles
-
-- The AI mentor asks questions and never provides final answers.
-- Hints consume stars and update state immediately.
-- Clear loading, empty, and error states across lists and lessons.
-
-## UI Layout Summary
-
-- Insight Hub: topic/problem toggle, search bar with mic and upload icons, recent journeys.
-- Interaction Screen: split layout with micro-theory on the left and chat on the right.
-- Dashboard: progress overview and lesson tracking, accessible from the sidebar.
-- Sidebar: Gemini-style navigation with search, toolbar, and recent journeys.
-- Mobile: sidebar hidden by default and stacked theory + chat panels.
-
-## Architecture Overview
-
-The learning flow is driven by a Nanoclaw agent (via OpenRouter). Instead of prompt-engineering raw API calls, the backend provisions a Nanoclaw agent and equips it with discrete skills that it invokes autonomously.
-
-- `Decomposer`: generates a 5-module roadmap.
-- `Lesson_Generator`: produces micro-theory and 3 questions (easy, medium, hard).
-- `Socratic_Tutor`: evaluates responses and provides guiding questions or hints.
-- `Progress_Updater`: persists XP, stars, and lesson state through the backend API.
-
-## API Contracts (Backend)
-
-- `POST /api/auth/firebase-login`: exchange Firebase ID token for backend session.
-- `GET /api/roadmaps`: list roadmaps for the user.
-- `POST /api/roadmaps`: create a roadmap for a topic.
-- `GET /api/roadmaps/{roadmap_id}`: roadmap detail and progress.
-- `GET /api/lessons/{lesson_id}`: fetch micro-theory and question set.
-- `POST /api/lessons/{lesson_id}/answer`: submit answers and get next prompt.
-- `POST /api/lessons/{lesson_id}/hint`: request a hint and update stars.
-- `GET /api/dashboard`: progress summaries and streak info.
-
-See [docs/api-contracts.md](docs/api-contracts.md) for request/response payloads.
-
-## Data Model (Summary)
-
-- Users, roadmaps, modules, lessons, questions.
-- Lesson state and question attempts with hint usage and XP tracking.
-
-See [docs/data-schema.md](docs/data-schema.md) for full schema details.
-
-## Tech Stack
-
-- Frontend: Next.js App Router + Tailwind CSS.
-- Backend: Django REST Framework.
-- Auth: Firebase Auth (Google OAuth).
-- Database: PostgreSQL.
-- AI Agent: Nanoclaw (via OpenRouter).
-
-## Repository Conventions
-
-- Use the Next.js App Router under `app/`.
-- Global styles live in `app/globals.css` only.
-- Avoid barrel imports; import from concrete module paths.
-- Prefer server components; isolate client state with `"use client"`.
-
-See [docs/implementation-rules.md](docs/implementation-rules.md) for full rules.
-
-## Getting Started
-
-Install dependencies and run the development server:
+## Commands
 
 ```bash
 npm install
 npm run dev
 ```
 
-Open http://localhost:3000 to view the app.
+Open http://localhost:3000.
 
-## Documentation Index
+## Documentation (repo root)
 
-- [Product Requirements](docs/PRD.md)
-- [Design Brief](docs/design-brief.md)
-- [UI/UX Guidelines](docs/ui-ux-guidelines.md)
-- [API Contracts](docs/api-contracts.md)
-- [Data Schema](docs/data-schema.md)
-- [Implementation Rules](docs/implementation-rules.md)
-- [Agent Skills Spec](docs/agent-skills-spec.md)
+- [Product requirements](../docs/PRD.md)
+- [API contracts](../docs/api-contracts.md)
+- [Backend / infra](../docs/backend-infra.md)
+- [Data schema (target)](../docs/data-schema.md)
+- [Implementation rules](../docs/implementation-rules.md)

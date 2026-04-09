@@ -42,15 +42,15 @@ Cognito.ai is an adaptive, metacognitive learning platform that prevents "AI-dep
 
 | Component      | Technology                                          |
 | -------------- | --------------------------------------------------- |
-| Frontend       | React.js + Tailwind CSS                             |
-| Backend        | Django (Python)                                     |
-| Authentication | Firebase Auth (Google OAuth) + Django password auth |
-| Database       | Supabase Postgres                                   |
-| AI Agent       | Nanoclaw (via OpenRouter)                           |
+| Frontend       | Next.js (App Router) + React + Tailwind CSS         |
+| Backend        | Django REST (Python), `backend/` in monorepo      |
+| Authentication | Firebase Auth (Google OAuth) + email/password UI; backend session endpoints per `docs/api-contracts.md` |
+| Database       | Supabase Postgres (target; persistence partial)     |
+| AI             | OpenRouter tool-calling skill runner in backend     |
 
 ## 6. System Architecture and Agent Skills (CAI-19/20)
 
-The project uses a Nanoclaw agent (provisioned via OpenRouter) to manage the learning flow. Instead of prompt-engineering raw API calls, the backend equips the agent with discrete skills that it invokes autonomously based on context:
+The project uses an OpenRouter-backed **agentic skill runner** in the Django backend to manage the learning flow. Instead of scattering prompts in views, the backend keeps discrete **skill modules** (`backend/skills/*.py`) that the runner exposes as tools to the model:
 
 - Decomposer: Analyzes the input topic and returns a structured JSON roadmap.
 - Lesson_Generator: Generates theory and questions for a specific subtopic.

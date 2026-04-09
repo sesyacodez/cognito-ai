@@ -1,6 +1,19 @@
 # API Contracts
 
-These contracts assume a Django REST backend with Supabase (Postgres) as the database and a Nanoclaw agent (via OpenRouter) as the AI engine.
+HTTP API implemented by the **Django** app under `backend/`. The **Next.js** app in `cognito-ai/` calls these as same-origin `/api/...` paths; `next.config.ts` rewrites them to `NEXT_PUBLIC_BACKEND_URL` (see `docs/backend-infra.md`).
+
+The AI layer is an **OpenRouter tool-calling skill runner** (`backend/agent/runner.py`) that loads specs from `backend/skills/*.py` — not a separate “Nanoclaw” service.
+
+## Frontend integration (actual behavior)
+
+- **Lessons:** `GET /api/lessons/{lesson_id}` accepts query params `module_topic` and `mode` (`learn` | `solve`); see `lib/lessons.ts` and `backend/apps/lessons/views.py`.
+- **Authorization:** The web client attaches `Authorization: Bearer <token>` using values from `lib/auth.ts`. After Firebase sign-in, the stored token is currently the **Firebase user id**, not necessarily the `session_token` returned by the auth endpoints below. Backend stub settings may accept this in dev; production should validate Firebase ID tokens or use a proper session exchange.
+
+## Not implemented yet
+
+- **`GET /api/dashboard`** — specified below for the product; no matching route in `backend/config/urls.py` at the time of writing. Treat as planned.
+
+---
 
 ## Auth
 
@@ -117,7 +130,8 @@ These contracts assume a Django REST backend with Supabase (Postgres) as the dat
 
 ### GET /api/lessons/{lesson_id}
 
-- Returns micro-theory and question set.
+- Query params: `module_topic` (string), `mode` (`learn` | `solve`, default `learn`).
+- Returns micro-theory and question set (no `answer_key` in the payload).
 
 ### POST /api/lessons/{lesson_id}/answer
 
@@ -164,7 +178,7 @@ These contracts assume a Django REST backend with Supabase (Postgres) as the dat
 }
 ```
 
-## Dashboard
+## Dashboard (planned)
 
 ### GET /api/dashboard
 

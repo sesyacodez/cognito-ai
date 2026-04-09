@@ -2,11 +2,12 @@
 
 ## Goals
 
-Deliver a Next.js App Router frontend and Django REST backend that enforce Socratic learning, keep performance high, and persist learner progress with reliable data contracts. Use Supabase Postgres for persistence and a Nanoclaw agent (via OpenRouter) for AI-driven learning flows.
+Deliver a **Next.js App Router** frontend (`cognito-ai/`) and **Django REST** backend (`backend/`) that enforce Socratic learning, keep performance high, and persist learner progress with reliable data contracts. Use **Supabase Postgres** (or equivalent Postgres) as the target database for Django. AI features use the **OpenRouter** tool-calling skill runner in `backend/agent/runner.py` and `backend/skills/*.py`.
 
 ## Repository Conventions
 
-- Use the Next.js App Router under app/.
+- Frontend: Next.js App Router under `cognito-ai/app/`.
+- Backend: Django apps under `backend/apps/`.
 - Keep global styles in app/globals.css only; component styles live in Tailwind classes.
 - Public assets must remain under public/.
 - Do not create barrel imports; import from the concrete module path.
@@ -32,12 +33,12 @@ Deliver a Next.js App Router frontend and Django REST backend that enforce Socra
 - Cache read-heavy server data with React.cache() when safe.
 - Do not fetch the same data both in server and client for the same view.
 
-## Database and Infra (Supabase)
+## Database and Infra (Supabase / Postgres)
 
-- Use Supabase Postgres as the primary database for Django.
+- Target: Supabase Postgres as the primary database for Django when persistence is enabled.
 - Configure DB via `DATABASE_URL` (preferred) with `sslmode=require` in production.
-- Run standard Django migrations against Supabase; avoid manual SQL edits to schema.
-- Keep DB credentials and Supabase keys in environment variables only; never ship service role keys to the client.
+- Run standard Django migrations against the configured database; avoid manual SQL edits to schema in production.
+- Keep DB credentials and Supabase keys in **backend** environment variables only; never ship service role keys to the Next.js client bundle.
 
 ## State Management
 
@@ -46,11 +47,12 @@ Deliver a Next.js App Router frontend and Django REST backend that enforce Socra
 
 ## Security and Privacy
 
-- Validate Firebase ID tokens on the backend for every session exchange.
-- Validate email/password credentials on the backend for every login.
-- Never expose raw Firebase tokens to client logs.
+- Validate Firebase ID tokens on the backend for every session exchange once the client uses `POST /api/auth/firebase-login` with real ID tokens.
+- Validate email/password credentials on the backend for every login via the auth API.
+- Never expose raw Firebase tokens or passwords to client logs.
 - Never log or return raw passwords.
-- Enforce per-user authorization on roadmaps and lesson states.
+- Enforce per-user authorization on roadmaps and lesson states when data is DB-backed.
+- **Current gap:** the frontend may send `Authorization: Bearer <firebase_uid>` from `localStorage` without a backend-issued `session_token`; tighten before production (see root `README.md`).
 
 ## Accessibility
 
