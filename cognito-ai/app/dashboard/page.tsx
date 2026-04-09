@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useAuth } from "@/lib/AuthContext";
 import { useRouter } from "next/navigation";
-import { fetchDashboard, DashboardData } from "@/lib/dashboard";
+import { fetchDashboard, DashboardData, DashboardActivity } from "@/lib/dashboard";
 
 export default function DashboardPage() {
   const { user, logout } = useAuth();
