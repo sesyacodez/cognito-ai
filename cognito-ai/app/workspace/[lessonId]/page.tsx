@@ -6,8 +6,10 @@ import {
   fetchLesson,
   submitAnswer,
   requestHint,
+  resetLesson,
   Lesson,
   LessonQuestion,
+  LessonProgress,
   AnswerResult,
   HintResult,
 } from "@/lib/lessons";
@@ -23,7 +25,7 @@ interface QuestionState {
   nextPrompt: string;
   hints: string[];
   hintLevel: number;
-  starsRemaining: number;
+  starEarned: boolean;
   xp: number;
   isSubmitting: boolean;
   isLoadingHint: boolean;
@@ -52,10 +54,83 @@ export default function LearningWorkspace() {
     Record<string, QuestionState>
   >({});
   const [totalXp, setTotalXp] = useState(0);
+  const [totalStars, setTotalStars] = useState(0);
   const [lessonStatus, setLessonStatus] = useState<string>("not_started");
   const [showTheory, setShowTheory] = useState(true);
   const [showConfetti, setShowConfetti] = useState(false);
+  const [showResumeDialog, setShowResumeDialog] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
+  const pendingLessonRef = useRef<Lesson | null>(null);
   const answerInputRef = useRef<HTMLTextAreaElement>(null);
+
+  function initFreshStates(data: Lesson): Record<string, QuestionState> {
+    const states: Record<string, QuestionState> = {};
+    data.questions.forEach((q) => {
+      states[q.id] = {
+        answer: "",
+        submitted: false,
+        correct: null,
+        nextPrompt: "",
+        hints: [],
+        hintLevel: 0,
+        starEarned: false,
+        xp: 0,
+        isSubmitting: false,
+        isLoadingHint: false,
+        optimisticStatus: "idle",
+      };
+    });
+    return states;
+  }
+
+  function restoreProgress(data: Lesson, progress: LessonProgress) {
+    const states: Record<string, QuestionState> = {};
+    let firstUnansweredIdx = -1;
+
+    data.questions.forEach((q, idx) => {
+      const qp = progress.questions[q.id];
+      if (qp && qp.answered) {
+        const earned = qp.correct === true && qp.hints_used === 0;
+        states[q.id] = {
+          answer: qp.answer || "",
+          submitted: true,
+          correct: qp.correct,
+          nextPrompt: "",
+          hints: [],
+          hintLevel: qp.hints_used,
+          starEarned: earned,
+          xp: 0,
+          isSubmitting: false,
+          isLoadingHint: false,
+          optimisticStatus: qp.correct ? "correct" : "incorrect",
+        };
+      } else {
+        if (firstUnansweredIdx === -1) firstUnansweredIdx = idx;
+        states[q.id] = {
+          answer: "",
+          submitted: false,
+          correct: null,
+          nextPrompt: "",
+          hints: [],
+          hintLevel: qp?.hints_used ?? 0,
+          starEarned: false,
+          xp: 0,
+          isSubmitting: false,
+          isLoadingHint: false,
+          optimisticStatus: "idle",
+        };
+      }
+    });
+
+    setQuestionStates(states);
+    setTotalXp(progress.xp_earned);
+    setTotalStars(progress.stars_remaining);
+    setLessonStatus(progress.status);
+    if (firstUnansweredIdx >= 0) {
+      setCurrentQuestionIndex(firstUnansweredIdx);
+      setShowTheory(false);
+    }
+  }
 
   /* ── fetch lesson on mount ── */
   useEffect(() => {
@@ -69,24 +144,18 @@ export default function LearningWorkspace() {
         if (cancelled) return;
         setLesson(data);
 
-        // Initialize question states
-        const states: Record<string, QuestionState> = {};
-        data.questions.forEach((q) => {
-          states[q.id] = {
-            answer: "",
-            submitted: false,
-            correct: null,
-            nextPrompt: "",
-            hints: [],
-            hintLevel: 0,
-            starsRemaining: 3,
-            xp: 0,
-            isSubmitting: false,
-            isLoadingHint: false,
-            optimisticStatus: "idle",
-          };
-        });
-        setQuestionStates(states);
+        const hasProgress =
+          data.progress &&
+          data.progress.status !== "not_started" &&
+          Object.keys(data.progress.questions).length > 0;
+
+        if (hasProgress) {
+          pendingLessonRef.current = data;
+          setShowResumeDialog(true);
+          setQuestionStates(initFreshStates(data));
+        } else {
+          setQuestionStates(initFreshStates(data));
+        }
       } catch (err) {
         if (cancelled) return;
         setError(
@@ -102,6 +171,34 @@ export default function LearningWorkspace() {
       cancelled = true;
     };
   }, [lessonId, moduleTopic, mode]);
+
+  async function handleContinueLesson() {
+    const data = pendingLessonRef.current || lesson;
+    if (data?.progress) {
+      restoreProgress(data, data.progress);
+    }
+    setShowResumeDialog(false);
+  }
+
+  async function handleStartOver() {
+    setIsResetting(true);
+    try {
+      await resetLesson(lessonId);
+      const data = pendingLessonRef.current || lesson;
+      if (data) {
+        setQuestionStates(initFreshStates(data));
+        setTotalXp(0);
+        setLessonStatus("not_started");
+        setCurrentQuestionIndex(0);
+        setShowTheory(true);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to reset lesson");
+    } finally {
+      setIsResetting(false);
+      setShowResumeDialog(false);
+    }
+  }
 
   /* ── helpers ── */
   const currentQuestion: LessonQuestion | null =
@@ -150,12 +247,13 @@ export default function LearningWorkspace() {
         correct: result.correct,
         nextPrompt: result.next_prompt,
         xp: result.progress.xp,
-        starsRemaining: result.progress.stars_remaining,
+        starEarned: result.progress.star_earned,
         isSubmitting: false,
         optimisticStatus: result.correct ? "correct" : "incorrect",
       });
 
       setTotalXp((prev) => prev + result.progress.xp);
+      setTotalStars(result.progress.total_stars);
       setLessonStatus(result.progress.status);
 
       // If completed, show confetti
@@ -183,10 +281,10 @@ export default function LearningWorkspace() {
     const qId = currentQuestion.id;
     const nextHintLevel = currentState.hintLevel + 1;
 
-    // ① Optimistic: show loading state and decrement stars
+    // ① Optimistic: show loading state, mark star as forfeited
     updateQState(qId, {
       isLoadingHint: true,
-      starsRemaining: Math.max(0, 3 - nextHintLevel),
+      starEarned: false,
     });
 
     try {
@@ -200,14 +298,13 @@ export default function LearningWorkspace() {
       updateQState(qId, {
         hints: [...currentState.hints, result.hint],
         hintLevel: nextHintLevel,
-        starsRemaining: result.stars_remaining,
+        starEarned: false,
         isLoadingHint: false,
       });
     } catch (err) {
       // ③ Rollback
       updateQState(qId, {
         isLoadingHint: false,
-        starsRemaining: Math.max(0, 3 - currentState.hintLevel),
       });
       setError(
         err instanceof Error ? err.message : "Failed to get hint"
@@ -290,6 +387,59 @@ export default function LearningWorkspace() {
     <div className="flex min-h-screen h-screen bg-[#0b0f1e] font-sans overflow-hidden">
       {/* ═══ Confetti overlay ═══ */}
       {showConfetti && <ConfettiOverlay />}
+
+      {/* ═══ Resume / Start Over dialog ═══ */}
+      {showResumeDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-[#111830] border border-gray-700/50 rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl animate-slideUp">
+            <div className="w-12 h-12 rounded-full bg-cyan-500/10 flex items-center justify-center mx-auto mb-4">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#22d3ee" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </div>
+            <h2 className="text-lg font-bold text-white text-center mb-2">Previous Progress Found</h2>
+            <p className="text-sm text-gray-400 text-center mb-6">
+              You have saved progress on this lesson ({lesson?.progress?.status === "completed" ? "completed" : "in progress"}).
+              Would you like to continue or start over?
+            </p>
+
+            {lesson?.progress && (
+              <div className="flex items-center justify-center gap-4 mb-6 text-sm">
+                <div className="text-center">
+                  <div className="text-xl font-bold text-cyan-400">{lesson.progress.xp_earned}</div>
+                  <div className="text-xs text-gray-500">XP earned</div>
+                </div>
+                <div className="w-px h-8 bg-gray-700" />
+                <div className="text-center">
+                  <div className="text-xl font-bold text-yellow-400">{lesson.progress.stars_remaining} ⭐</div>
+                  <div className="text-xs text-gray-500">Stars earned</div>
+                </div>
+                <div className="w-px h-8 bg-gray-700" />
+                <div className="text-center">
+                  <div className="text-xl font-bold text-emerald-400">{Object.values(lesson.progress.questions).filter(q => q.answered).length}/{lesson.questions.length}</div>
+                  <div className="text-xs text-gray-500">Answered</div>
+                </div>
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <button
+                onClick={handleStartOver}
+                disabled={isResetting}
+                className="flex-1 py-2.5 bg-gray-700/50 hover:bg-gray-700 text-gray-300 text-sm font-medium rounded-xl transition disabled:opacity-50"
+              >
+                {isResetting ? "Resetting..." : "Start Over"}
+              </button>
+              <button
+                onClick={handleContinueLesson}
+                className="flex-1 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-medium rounded-xl transition"
+              >
+                Continue
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ═══ LEFT PANEL: Theory + Question ═══ */}
       <div className="flex flex-col w-[55%] border-r border-gray-700/30">
@@ -414,6 +564,7 @@ export default function LearningWorkspace() {
                 const isActive = i === currentQuestionIndex;
                 const isDone = qs?.submitted;
                 const isCorrect = qs?.correct;
+                const hasStar = qs?.starEarned;
 
                 let pillColor =
                   "bg-[#141a30] border-gray-700/40 text-gray-400";
@@ -431,12 +582,13 @@ export default function LearningWorkspace() {
                   <button
                     key={q.id}
                     onClick={() => goToQuestion(i)}
-                    className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition-all focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-[#0b0f1e] ${pillColor}`}
+                    className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition-all focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-[#0b0f1e] flex items-center gap-1 ${pillColor}`}
                     aria-label={`Go to Question ${i + 1}`}
                     aria-current={isActive ? "step" : undefined}
                   >
                     Q{i + 1}
-                    {isDone && isCorrect && " ✓"}
+                    {hasStar && <span>⭐</span>}
+                    {isDone && !hasStar && isCorrect && " ✓"}
                     {isDone && !isCorrect && " ✗"}
                   </button>
                 );
@@ -488,47 +640,41 @@ export default function LearningWorkspace() {
 
         {/* Progress content */}
         <div className="flex-1 overflow-y-auto p-5 space-y-5 scrollbar-thin">
-          {/* Stars display */}
-          {currentState && (
-            <div className="bg-[#111830] rounded-xl border border-gray-700/30 p-5">
-              <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
-                Current Question Stars
+          {/* Lesson stars — one per question */}
+          <div className="bg-[#111830] rounded-xl border border-gray-700/30 p-5">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                Lesson Stars
               </h3>
-              <div className="flex items-center gap-1">
-                {[1, 2, 3].map((star) => (
-                  <svg
-                    key={star}
-                    width="24"
-                    height="24"
-                    viewBox="0 0 24 24"
-                    fill={
-                      star <= currentState.starsRemaining
-                        ? "#facc15"
-                        : "none"
-                    }
-                  >
-                    <path
-                      d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
-                      stroke={
-                        star <= currentState.starsRemaining
-                          ? "#facc15"
-                          : "#4b5563"
-                      }
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                ))}
-                <span className="ml-2 text-sm text-gray-400">
-                  {currentState.starsRemaining}/3 remaining
-                </span>
-              </div>
-              <p className="mt-2 text-[11px] text-gray-500">
-                Each hint used deducts one star. No hints = max XP!
-              </p>
+              <span className="text-xs font-bold text-yellow-400">{totalStars} / {totalQuestions}</span>
             </div>
-          )}
+            <div className="flex items-center gap-2 mb-3">
+              {lesson?.questions.map((q, i) => {
+                const qs = questionStates[q.id];
+                const earned = qs?.starEarned;
+                const answered = qs?.submitted;
+                const hintUsed = (qs?.hintLevel ?? 0) > 0;
+                const canEarn = !answered && !hintUsed;
+                return (
+                  <div key={q.id} className="flex flex-col items-center gap-1">
+                    <svg width="28" height="28" viewBox="0 0 24 24"
+                      fill={earned ? "#facc15" : "none"}
+                      className="transition-all duration-300">
+                      <path
+                        d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
+                        stroke={earned ? "#facc15" : canEarn ? "#6b7280" : "#374151"}
+                        strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+                      />
+                    </svg>
+                    <span className="text-[9px] text-gray-600">Q{i + 1}</span>
+                  </div>
+                );
+              })}
+            </div>
+            <p className="text-[11px] text-gray-500">
+              Each star = one question answered correctly with no hints.
+            </p>
+          </div>
 
           {/* XP summary */}
           <div className="bg-[#111830] rounded-xl border border-gray-700/30 p-5">
@@ -688,14 +834,37 @@ export default function LearningWorkspace() {
           </div>
         </div>
 
-        {/* Lesson complete button */}
+        {/* Lesson complete / reset actions */}
         {lessonStatus === "completed" && (
-          <div className="px-5 pb-5 pt-2 flex-shrink-0">
+          <div className="px-5 pb-5 pt-2 flex-shrink-0 space-y-2">
             <button
               onClick={() => router.push("/insight-hub")}
               className="w-full py-3 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-medium rounded-xl transition-all text-sm shadow-lg shadow-cyan-500/20 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-[#0d1220]"
             >
-              🎉 Lesson Complete! Return to Hub
+              Lesson Complete — Return to Hub
+            </button>
+            <button
+              onClick={async () => {
+                setIsResetting(true);
+                try {
+                  await resetLesson(lessonId);
+                  if (lesson) {
+                    setQuestionStates(initFreshStates(lesson));
+                    setTotalXp(0);
+                    setLessonStatus("not_started");
+                    setCurrentQuestionIndex(0);
+                    setShowTheory(true);
+                  }
+                } catch (err) {
+                  setError(err instanceof Error ? err.message : "Failed to reset");
+                } finally {
+                  setIsResetting(false);
+                }
+              }}
+              disabled={isResetting}
+              className="w-full py-2.5 bg-gray-700/30 hover:bg-gray-700/50 text-gray-400 hover:text-gray-200 text-sm font-medium rounded-xl transition border border-gray-700/30 disabled:opacity-50"
+            >
+              {isResetting ? "Resetting..." : "Start Over"}
             </button>
           </div>
         )}
@@ -874,7 +1043,7 @@ function QuestionCard({
                   />
                 </svg>
               )}
-              Hint ({state.hintLevel}/3)
+              {state.hintLevel === 0 ? "Hint (loses ⭐)" : `Hint (${state.hintLevel}/3)`}
             </button>
           )}
         </div>

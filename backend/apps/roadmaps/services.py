@@ -5,6 +5,7 @@ from django.db import transaction
 from django.shortcuts import get_object_or_404
 
 from apps.auth.services import resolve_user_from_bearer_token
+from apps.lessons.models import LessonState
 from apps.roadmaps.models import Roadmap, RoadmapModule
 from utils.fixtures import get_placeholder_roadmap
 
@@ -33,8 +34,44 @@ def get_authenticated_user(request):
     )
 
 
-def serialize_roadmap(roadmap: Roadmap) -> dict:
-    return roadmap.to_api_dict()
+def serialize_roadmap(roadmap: Roadmap, module_progress: dict | None = None) -> dict:
+    data = roadmap.to_api_dict()
+    if module_progress:
+        for module in data.get("modules", []):
+            lesson_key = f"{roadmap.id}-{module['index']}"
+            state = module_progress.get(lesson_key)
+            if state:
+                module["lesson_status"] = state["status"]
+                module["xp_earned"] = state["xp_earned"]
+                module["stars_remaining"] = state["stars_remaining"]
+            else:
+                module["lesson_status"] = "not_started"
+                module["xp_earned"] = 0
+                module["stars_remaining"] = 3
+
+        completed_count = sum(
+            1 for m in data.get("modules", [])
+            if m.get("lesson_status") == "completed"
+        )
+        total = len(data.get("modules", []))
+        data["progress"] = int(round((completed_count / total) * 100)) if total else 0
+    return data
+
+
+def _get_module_progress_map(user) -> dict:
+    states = (
+        LessonState.objects
+        .filter(user=user)
+        .select_related("lesson")
+    )
+    return {
+        state.lesson.lesson_key: {
+            "status": state.status,
+            "xp_earned": state.xp_earned,
+            "stars_remaining": state.stars_remaining,
+        }
+        for state in states
+    }
 
 
 def list_roadmaps_for_user(user) -> list[dict]:
@@ -43,7 +80,8 @@ def list_roadmaps_for_user(user) -> list[dict]:
         .prefetch_related("modules")
         .order_by("-created_at")
     )
-    return [serialize_roadmap(roadmap) for roadmap in roadmaps]
+    module_progress = _get_module_progress_map(user)
+    return [serialize_roadmap(roadmap, module_progress) for roadmap in roadmaps]
 
 
 def get_roadmap_for_user(user, roadmap_id):

@@ -5,13 +5,18 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useAuth } from "@/lib/AuthContext";
 import { getSession } from "@/lib/auth";
 import { useRouter } from "next/navigation";
+import { resetLesson, deleteLesson } from "@/lib/lessons";
 
 /* ── types ─────────────────────────────────────────── */
 
 interface JourneyModule {
   order: number;
+  index: number;
   title: string;
   description: string;
+  lesson_status?: "not_started" | "in_progress" | "completed";
+  xp_earned?: number;
+  stars_remaining?: number;
 }
 
 interface Journey {
@@ -31,12 +36,16 @@ function normalizeJourney(raw: Record<string, unknown>, topic: string, type: "to
     topic: (raw.topic as string) ?? topic,
     type,
     modules: rawModules.map((m, i) => ({
-      order: (m.index as number) ?? i,
+      order: (m.order as number) ?? (m.index as number) ?? i,
+      index: (m.index as number) ?? i,
       title: (m.title as string) ?? "",
       description: (m.outcome as string) ?? (m.description as string) ?? "",
+      lesson_status: (m.lesson_status as JourneyModule["lesson_status"]) ?? "not_started",
+      xp_earned: (m.xp_earned as number) ?? 0,
+      stars_remaining: (m.stars_remaining as number) ?? 3,
     })),
-    createdAt: new Date().toISOString(),
-    progress: 0,
+    createdAt: (raw.created_at as string) ?? (raw.createdAt as string) ?? new Date().toISOString(),
+    progress: (raw.progress as number) ?? 0,
   };
 }
 
@@ -69,6 +78,8 @@ export default function InsightHub() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [error, setError] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
+  const [expandedJourney, setExpandedJourney] = useState<string | null>(null);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const handleLogout = async () => {
@@ -91,7 +102,10 @@ export default function InsightHub() {
       const res = await fetch("/api/roadmaps", { headers });
       if (!res.ok) throw new Error("Failed to fetch journeys");
       const data = await res.json();
-      setJourneys(data || []);
+      const normalized = (data || []).map((raw: Record<string, unknown>) =>
+        normalizeJourney(raw, (raw.topic as string) || "", (raw.type as "topic" | "problem") || "topic")
+      );
+      setJourneys(normalized);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load journeys");
     } finally {
@@ -439,85 +453,188 @@ export default function InsightHub() {
               </p>
             </form>
 
-            {/* ── recent journeys ── */}
-            {recentJourneys.length > 0 && (
+            {/* ── journeys with module progress ── */}
+            {journeys.length > 0 && (
               <div className="w-full max-w-3xl">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-sm font-semibold text-white">
-                    Recent Journeys
-                  </h2>
-                  <button className="text-xs text-blue-400 hover:text-blue-300 transition">
-                    View all →
-                  </button>
-                </div>
+                <h2 className="text-sm font-semibold text-white mb-4">
+                  Your Learning Paths
+                </h2>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {recentJourneys.map((journey) => (
-                    <div
-                      key={journey.id}
-                      onClick={() => {
-                        const qs = new URLSearchParams({ topic: journey.topic, mode: journey.type === "topic" ? "learn" : "solve" });
-                        router.push(`/workspace/${journey.id}?${qs.toString()}`);
-                      }}
-                      className="group bg-[#0f1224] rounded-xl border border-gray-700/40 p-5 hover:border-blue-500/40 transition-all duration-200 cursor-pointer hover:shadow-lg hover:shadow-blue-900/10"
-                    >
-                      {/* card header */}
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="w-8 h-8 rounded-lg bg-blue-600/15 flex items-center justify-center">
-                          {journey.type === "problem" ? (
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                              <rect x="3" y="3" width="18" height="18" rx="2" stroke="#60a5fa" strokeWidth="1.5" />
-                              <path d="M8 12h8M12 8v8" stroke="#60a5fa" strokeWidth="1.5" strokeLinecap="round" />
-                            </svg>
-                          ) : (
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                              <rect x="3" y="4" width="18" height="16" rx="2" stroke="#60a5fa" strokeWidth="1.5" />
-                              <path d="M7 8h10M7 12h6" stroke="#60a5fa" strokeWidth="1.5" strokeLinecap="round" />
-                            </svg>
-                          )}
-                        </div>
-                        <span
-                          className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${journey.type === "problem"
-                            ? "bg-purple-500/15 text-purple-300"
-                            : "bg-blue-500/15 text-blue-300"
-                            }`}
+                <div className="space-y-4">
+                  {journeys.map((journey) => {
+                    const isExpanded = expandedJourney === journey.id;
+                    const completedModules = journey.modules.filter(m => m.lesson_status === "completed").length;
+                    const progress = journey.modules.length > 0 ? Math.round((completedModules / journey.modules.length) * 100) : 0;
+                    const mode = journey.type === "topic" ? "learn" : "solve";
+
+                    return (
+                      <div key={journey.id} className="bg-[#0f1224] rounded-xl border border-gray-700/40 overflow-hidden transition-all hover:border-blue-500/30">
+                        {/* journey header — click to expand */}
+                        <button
+                          onClick={() => setExpandedJourney(isExpanded ? null : journey.id)}
+                          className="w-full flex items-center justify-between p-5 text-left group"
                         >
-                          {journey.type === "problem" ? "Problem" : "Topic"}
-                        </span>
-                      </div>
-
-                      {/* card body */}
-                      <h3 className="text-sm font-semibold text-white mb-1 line-clamp-2 group-hover:text-blue-100 transition">
-                        {journey.topic}
-                      </h3>
-                      <p className="text-xs text-gray-400 mb-4 line-clamp-2">
-                        {journey.modules
-                          ?.slice(0, 2)
-                          .map((m) => m.title)
-                          .join(", ") || "No modules yet"}
-                      </p>
-
-                      {/* card footer */}
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] text-gray-500">
-                          {timeAgo(journey.createdAt)}
-                        </span>
-                        <div className="flex items-center gap-2">
-                          <div className="w-16 h-1 bg-gray-700 rounded-full overflow-hidden">
-                            <div
-                              className="h-full bg-blue-500 rounded-full transition-all"
-                              style={{
-                                width: `${journey.progress ?? Math.floor(Math.random() * 100)}%`,
-                              }}
-                            />
+                          <div className="flex items-center gap-4 min-w-0">
+                            <div className="w-10 h-10 rounded-xl bg-blue-600/15 flex items-center justify-center flex-shrink-0">
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                                <path d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l5.447 2.724A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" stroke="#60a5fa" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                              </svg>
+                            </div>
+                            <div className="min-w-0">
+                              <h3 className="text-sm font-semibold text-white group-hover:text-blue-200 transition truncate">{journey.topic}</h3>
+                              <p className="text-xs text-gray-500">{completedModules}/{journey.modules.length} modules • {timeAgo(journey.createdAt)}</p>
+                            </div>
                           </div>
-                          <span className="text-[10px] text-gray-400">
-                            {journey.progress ?? Math.floor(Math.random() * 100)}%
-                          </span>
-                        </div>
+                          <div className="flex items-center gap-4 flex-shrink-0">
+                            <div className="flex items-center gap-2">
+                              <div className="w-20 h-1.5 bg-gray-700 rounded-full overflow-hidden">
+                                <div className="h-full bg-blue-500 rounded-full transition-all duration-500" style={{ width: `${progress}%` }} />
+                              </div>
+                              <span className="text-xs text-gray-400 w-8 text-right">{progress}%</span>
+                            </div>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className={`text-gray-500 transition-transform ${isExpanded ? "rotate-180" : ""}`}>
+                              <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                          </div>
+                        </button>
+
+                        {/* expanded module list */}
+                        {isExpanded && (
+                          <div className="px-5 pb-5 space-y-2 border-t border-gray-700/30 pt-4">
+                            {journey.modules.map((mod) => {
+                              const lessonId = `${journey.id}-${mod.index}`;
+                              const isActionLoading = actionLoading === lessonId;
+                              const statusColors: Record<string, string> = {
+                                completed: "bg-emerald-500/10 border-emerald-500/30",
+                                in_progress: "bg-blue-500/10 border-blue-500/30",
+                                not_started: "bg-[#0d1220] border-gray-700/30",
+                              };
+                              const status = mod.lesson_status || "not_started";
+
+                              return (
+                                <div key={mod.index} className={`flex items-center gap-3 p-3 rounded-xl border ${statusColors[status]} transition`}>
+                                  {/* status icon */}
+                                  <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0">
+                                    {status === "completed" ? (
+                                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                                        <path d="M20 6L9 17l-5-5" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                      </svg>
+                                    ) : status === "in_progress" ? (
+                                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                                        <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#3b82f6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                                      </svg>
+                                    ) : (
+                                      <div className="w-5 h-5 rounded-full border-2 border-gray-600" />
+                                    )}
+                                  </div>
+
+                                  {/* module info */}
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium text-white truncate">{mod.title}</p>
+                                    <p className="text-xs text-gray-500 truncate">{mod.description}</p>
+                                  </div>
+
+                                  {/* XP/stars for non-idle modules */}
+                                  {status !== "not_started" && (
+                                    <div className="flex items-center gap-2 flex-shrink-0 mr-1">
+                                      <span className="text-xs font-bold text-cyan-400">{mod.xp_earned} XP</span>
+                                      <div className="flex gap-0.5">
+                                        {[1, 2, 3].map(s => (
+                                          <svg key={s} width="10" height="10" viewBox="0 0 24 24" fill={s <= (mod.stars_remaining ?? 0) ? "#facc15" : "none"}>
+                                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" stroke={s <= (mod.stars_remaining ?? 0) ? "#facc15" : "#4b5563"} strokeWidth="1.5"/>
+                                          </svg>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* action buttons */}
+                                  <div className="flex items-center gap-1 flex-shrink-0">
+                                    {status === "not_started" && (
+                                      <button
+                                        onClick={() => {
+                                          const qs = new URLSearchParams({ topic: mod.title, mode });
+                                          router.push(`/workspace/${lessonId}?${qs.toString()}`);
+                                        }}
+                                        className="px-3 py-1.5 text-xs font-medium bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 rounded-lg border border-blue-500/20 transition"
+                                      >
+                                        Start
+                                      </button>
+                                    )}
+                                    {status === "in_progress" && (
+                                      <button
+                                        onClick={() => {
+                                          const qs = new URLSearchParams({ topic: mod.title, mode });
+                                          router.push(`/workspace/${lessonId}?${qs.toString()}`);
+                                        }}
+                                        className="px-3 py-1.5 text-xs font-medium bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-400 rounded-lg border border-cyan-500/20 transition"
+                                      >
+                                        Continue
+                                      </button>
+                                    )}
+                                    {status === "completed" && (
+                                      <button
+                                        onClick={() => {
+                                          const qs = new URLSearchParams({ topic: mod.title, mode });
+                                          router.push(`/workspace/${lessonId}?${qs.toString()}`);
+                                        }}
+                                        className="px-3 py-1.5 text-xs font-medium bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 rounded-lg border border-emerald-500/20 transition"
+                                      >
+                                        Review
+                                      </button>
+                                    )}
+                                    {status !== "not_started" && (
+                                      <>
+                                        <button
+                                          onClick={async (e) => {
+                                            e.stopPropagation();
+                                            setActionLoading(lessonId);
+                                            try {
+                                              await resetLesson(lessonId);
+                                              await fetchJourneys();
+                                            } catch { /* ignore */ } finally {
+                                              setActionLoading(null);
+                                            }
+                                          }}
+                                          disabled={isActionLoading}
+                                          title="Reset progress"
+                                          className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-500 hover:text-amber-400 hover:bg-amber-500/10 transition disabled:opacity-50"
+                                        >
+                                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                                            <path d="M1 4v6h6M23 20v-6h-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                            <path d="M20.49 9A9 9 0 005.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 013.51 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                          </svg>
+                                        </button>
+                                        <button
+                                          onClick={async (e) => {
+                                            e.stopPropagation();
+                                            setActionLoading(lessonId);
+                                            try {
+                                              await deleteLesson(lessonId);
+                                              await fetchJourneys();
+                                            } catch { /* ignore */ } finally {
+                                              setActionLoading(null);
+                                            }
+                                          }}
+                                          disabled={isActionLoading}
+                                          title="Delete progress"
+                                          className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition disabled:opacity-50"
+                                        >
+                                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                                            <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                          </svg>
+                                        </button>
+                                      </>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}

@@ -7,7 +7,7 @@ from agent.runner import AgentError, run_skill
 from apps.auth.services import resolve_user_from_bearer_token
 from apps.lessons.models import Lesson, LessonQuestion, LessonState, QuestionAttempt
 from utils.fixtures import get_placeholder_lesson
-from utils.lesson_state import calculate_xp, calculate_stars, transition_status
+from utils.lesson_state import calculate_xp, question_earns_star, transition_status
 
 
 def normalize_mode(mode: str) -> str:
@@ -135,7 +135,7 @@ def ensure_lesson_state(user, lesson: Lesson) -> LessonState:
         lesson=lesson,
         defaults={
             "status": LessonState.Status.NOT_STARTED,
-            "stars_remaining": 3,
+            "stars_remaining": 0,
             "xp_earned": 0,
         },
     )
@@ -193,8 +193,7 @@ def record_hint_attempt(state: LessonState, question: LessonQuestion, hint_level
         hint_level=normalized_hint_level,
     )
     state.last_question = question
-    state.stars_remaining = calculate_stars(normalized_hint_level)
-    state.save(update_fields=["last_question", "stars_remaining", "updated_at"])
+    state.save(update_fields=["last_question", "updated_at"])
     return state.stars_remaining
 
 
@@ -207,7 +206,7 @@ def record_answer_attempt(
     hint_count: int,
 ) -> dict:
     xp_awarded = calculate_xp(correct=correct, hint_level=hint_count)
-    stars_remaining = calculate_stars(hint_count)
+    earned_star = question_earns_star(correct=correct, hint_usage=hint_count)
 
     QuestionAttempt.objects.create(
         lesson_state=state,
@@ -218,7 +217,8 @@ def record_answer_attempt(
     )
 
     state.xp_earned += xp_awarded
-    state.stars_remaining = stars_remaining
+    if earned_star:
+        state.stars_remaining = min(3, state.stars_remaining + 1)
     state.last_question = question
     answered_count = get_answered_question_count(state)
     total_questions = state.lesson.questions.count()
@@ -227,9 +227,79 @@ def record_answer_attempt(
 
     return {
         "xp": xp_awarded,
-        "stars_remaining": stars_remaining,
+        "star_earned": earned_star,
+        "total_stars": state.stars_remaining,
         "status": state.status,
     }
+
+
+def get_lesson_state_payload(user, lesson: Lesson) -> dict | None:
+    state = LessonState.objects.filter(user=user, lesson=lesson).first()
+    if state is None:
+        return None
+
+    attempts = (
+        QuestionAttempt.objects
+        .filter(lesson_state=state)
+        .select_related("question")
+        .order_by("created_at")
+    )
+
+    questions_progress: dict[str, dict] = {}
+    for attempt in attempts:
+        qkey = attempt.question.question_key
+        if qkey not in questions_progress:
+            questions_progress[qkey] = {
+                "question_id": qkey,
+                "answered": False,
+                "correct": None,
+                "hints_used": 0,
+                "answer": "",
+            }
+        if attempt.answer:
+            questions_progress[qkey]["answered"] = True
+            questions_progress[qkey]["correct"] = attempt.correct
+            questions_progress[qkey]["answer"] = attempt.answer
+        else:
+            questions_progress[qkey]["hints_used"] = attempt.hint_level
+
+    return {
+        "status": state.status,
+        "xp_earned": state.xp_earned,
+        "stars_remaining": state.stars_remaining,
+        "last_question_id": state.last_question.question_key if state.last_question else None,
+        "updated_at": state.updated_at.isoformat(),
+        "questions": questions_progress,
+    }
+
+
+@transaction.atomic
+def reset_lesson_state(user, lesson: Lesson) -> dict:
+    state = LessonState.objects.filter(user=user, lesson=lesson).first()
+    if state is None:
+        return {"status": "not_started", "xp_earned": 0, "total_stars": 0}
+
+    QuestionAttempt.objects.filter(lesson_state=state).delete()
+    state.status = LessonState.Status.NOT_STARTED
+    state.xp_earned = 0
+    state.stars_remaining = 0
+    state.last_question = None
+    state.save(update_fields=["status", "xp_earned", "stars_remaining", "last_question", "updated_at"])
+    return {
+        "status": state.status,
+        "xp_earned": state.xp_earned,
+        "total_stars": state.stars_remaining,
+    }
+
+
+@transaction.atomic
+def delete_lesson_state(user, lesson: Lesson) -> bool:
+    state = LessonState.objects.filter(user=user, lesson=lesson).first()
+    if state is None:
+        return False
+    QuestionAttempt.objects.filter(lesson_state=state).delete()
+    state.delete()
+    return True
 
 
 def reset_lesson_store() -> None:

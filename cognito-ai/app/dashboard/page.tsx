@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useAuth } from "@/lib/AuthContext";
 import { useRouter } from "next/navigation";
-import { fetchDashboard, DashboardData, DashboardActivity } from "@/lib/dashboard";
+import { fetchDashboard, DashboardData, DashboardActivity, DashboardRoadmap } from "@/lib/dashboard";
 
 export default function DashboardPage() {
   const { user, logout } = useAuth();
@@ -215,17 +215,75 @@ export default function DashboardPage() {
 
                   </div>
 
+                  {/* ROADMAPS SECTION */}
+                  {data.roadmaps && data.roadmaps.length > 0 && (
+                    <div className="mb-8">
+                      <h2 className="text-lg font-bold text-white mb-4">Your Learning Paths</h2>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {data.roadmaps.map((rm: DashboardRoadmap) => {
+                          const progress = rm.module_count > 0 ? Math.round((rm.completed_modules / rm.module_count) * 100) : 0;
+                          return (
+                            <button
+                              key={rm.id}
+                              onClick={() => router.push("/insight-hub")}
+                              className="text-left bg-[#111830] border border-gray-700/50 rounded-2xl p-5 hover:border-purple-500/40 transition shadow-lg group"
+                            >
+                              <div className="flex items-start justify-between mb-3">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-8 h-8 rounded-full bg-purple-500/10 flex items-center justify-center">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                                      <path d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l5.447 2.724A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" stroke="#a855f7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                    </svg>
+                                  </div>
+                                  <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${rm.mode === 'solve' ? 'bg-amber-500/10 text-amber-400' : 'bg-blue-500/10 text-blue-400'}`}>
+                                    {rm.mode}
+                                  </span>
+                                </div>
+                                {progress === 100 && (
+                                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                                    <path d="M20 6L9 17l-5-5" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                  </svg>
+                                )}
+                              </div>
+                              <p className="text-sm font-semibold text-white mb-1 group-hover:text-purple-300 transition truncate">{rm.topic}</p>
+                              <p className="text-xs text-gray-500 mb-3">{rm.completed_modules}/{rm.module_count} modules</p>
+                              <div className="w-full h-1.5 bg-gray-700/50 rounded-full overflow-hidden">
+                                <div
+                                  className="h-full bg-purple-500 rounded-full transition-all duration-700"
+                                  style={{ width: `${progress}%` }}
+                                />
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
                   {/* BOTTOM SECTION */}
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     {/* RECENT ACTIVITY */}
                     <div className="lg:col-span-2 bg-[#111830] border border-gray-700/50 rounded-2xl p-6 shadow-lg">
                       <h2 className="text-lg font-bold text-white mb-4">Recent Activity</h2>
                       {data.recent_activity.length === 0 ? (
-                        <p className="text-sm text-gray-500">No activity yet. Start learning to earn XP!</p>
+                        <div className="text-center py-8">
+                          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" className="mx-auto mb-3 text-gray-600">
+                            <path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                          <p className="text-sm text-gray-500">No activity yet.</p>
+                          <p className="text-xs text-gray-600 mt-1">Start a learning path from Insight Hub to earn XP!</p>
+                        </div>
                       ) : (
-                        <div className="space-y-4">
+                        <div className="space-y-3">
                           {data.recent_activity.map((act: DashboardActivity, i: number) => (
-                            <div key={i} className="flex items-center justify-between p-4 bg-[#0d1222] rounded-xl border border-gray-700/30 hover:border-gray-600/50 transition">
+                            <button
+                              key={i}
+                              onClick={() => {
+                                const qs = new URLSearchParams({ topic: act.lesson_title || act.lesson_id, mode: "learn" });
+                                router.push(`/workspace/${act.lesson_id}?${qs.toString()}`);
+                              }}
+                              className="w-full flex items-center justify-between p-4 bg-[#0d1222] rounded-xl border border-gray-700/30 hover:border-cyan-500/30 transition cursor-pointer group text-left"
+                            >
                               <div className="flex items-center gap-4">
                                 <div className={`w-10 h-10 rounded-full flex items-center justify-center ${act.status === 'completed' ? 'bg-emerald-500/10' : 'bg-blue-500/10'}`}>
                                   {act.status === 'completed' ? (
@@ -239,21 +297,26 @@ export default function DashboardPage() {
                                   )}
                                 </div>
                                 <div>
-                                  <p className="text-sm font-medium text-white">Lesson {act.lesson_id.split('-')[0]}...</p>
+                                  <p className="text-sm font-medium text-white group-hover:text-cyan-300 transition">{act.lesson_title || act.lesson_id}</p>
                                   <p className="text-xs text-gray-500">{timeAgo(act.updated_at)} • {act.status === 'completed' ? 'Completed' : 'In Progress'}</p>
                                 </div>
                               </div>
-                              <div className="text-right">
-                                <div className="text-sm font-bold text-cyan-400">+{act.xp_earned} XP</div>
-                                <div className="flex items-center justify-end gap-1 mt-1">
-                                  {[...Array(act.stars_earned)].map((_, j) => (
-                                    <svg key={j} width="10" height="10" viewBox="0 0 24 24" fill="#facc15">
-                                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" stroke="#facc15" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" />
-                                    </svg>
-                                  ))}
+                              <div className="flex items-center gap-3">
+                                <div className="text-right">
+                                  <div className="text-sm font-bold text-cyan-400">+{act.xp_earned} XP</div>
+                                  <div className="flex items-center justify-end gap-1 mt-1">
+                                    {[...Array(act.stars_earned)].map((_, j) => (
+                                      <svg key={j} width="10" height="10" viewBox="0 0 24 24" fill="#facc15">
+                                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" stroke="#facc15" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" />
+                                      </svg>
+                                    ))}
+                                  </div>
                                 </div>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="text-gray-600 group-hover:text-cyan-400 transition">
+                                  <path d="M9 18l6-6-6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                </svg>
                               </div>
-                            </div>
+                            </button>
                           ))}
                         </div>
                       )}
@@ -274,12 +337,31 @@ export default function DashboardPage() {
                            </div>
                          </div>
 
-                         <div>
-                           <div className="flex justify-between items-end mb-2">
+                         <div className="pt-2 border-t border-gray-700/30">
+                           <div className="flex justify-between items-center mb-3">
                              <span className="text-sm text-gray-400 font-medium">Lessons Active</span>
                              <span className="text-xs text-blue-400 font-bold">{data.lessons_in_progress}</span>
                            </div>
+                           <div className="flex justify-between items-center mb-3">
+                             <span className="text-sm text-gray-400 font-medium">Lessons Completed</span>
+                             <span className="text-xs text-emerald-400 font-bold">{data.lessons_completed}</span>
+                           </div>
+                           <div className="flex justify-between items-center">
+                             <span className="text-sm text-gray-400 font-medium">Learning Paths</span>
+                             <span className="text-xs text-purple-400 font-bold">{data.roadmaps?.length ?? 0}</span>
+                           </div>
                          </div>
+
+                         {data.roadmaps?.length === 0 && data.lessons_completed === 0 && (
+                           <div className="pt-4 border-t border-gray-700/30">
+                             <button
+                               onClick={() => router.push("/insight-hub")}
+                               className="w-full py-2.5 bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/30 rounded-xl text-sm font-medium text-blue-400 transition"
+                             >
+                               Start Learning
+                             </button>
+                           </div>
+                         )}
                        </div>
                     </div>
                   </div>

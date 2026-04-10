@@ -2,10 +2,20 @@ import { getAuthHeader } from "./auth";
 
 export interface DashboardActivity {
   lesson_id: string;
+  lesson_title: string;
   status: string;
   xp_earned: number;
   stars_earned: number;
   updated_at: string;
+}
+
+export interface DashboardRoadmap {
+  id: string;
+  topic: string;
+  mode: string;
+  module_count: number;
+  completed_modules: number;
+  created_at: string;
 }
 
 export interface DashboardData {
@@ -16,6 +26,8 @@ export interface DashboardData {
   current_streak: number;
   longest_streak: number;
   recent_activity: DashboardActivity[];
+  roadmaps: DashboardRoadmap[];
+  user_name: string;
 }
 
 export async function fetchDashboard(): Promise<DashboardData> {

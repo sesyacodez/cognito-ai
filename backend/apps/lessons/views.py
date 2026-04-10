@@ -19,14 +19,17 @@ from django.views.decorators.http import require_http_methods
 from agent.runner import AgentError, run_skill
 from apps.lessons.models import Lesson
 from apps.lessons.services import (
+    delete_lesson_state,
     ensure_lesson_state,
     ensure_question,
     get_authenticated_user,
     get_hint_count,
+    get_lesson_state_payload,
     get_question,
     normalize_mode,
     record_answer_attempt,
     record_hint_attempt,
+    reset_lesson_state,
 )
 from utils.fixtures import (
     get_placeholder_evaluation,
@@ -34,8 +37,8 @@ from utils.fixtures import (
     get_placeholder_lesson,
 )
 from utils.lesson_state import (
-    calculate_stars,
     calculate_xp,
+    question_earns_star,
     safe_transition_status,
     InvalidTransitionError,
 )
@@ -101,7 +104,7 @@ def lesson_detail(request, lesson_id: str):
     GET /api/lessons/{lesson_id}
 
     Returns lesson micro-theory and questions (no answer keys).
-    If the lesson is not in the cache, generates it via the Lesson_Generator skill.
+    Includes `progress` field with the user's saved state if authenticated.
     Query params:
         module_topic: used to generate the lesson if it isn't cached yet
         mode: learn|solve (default: learn)
@@ -111,15 +114,19 @@ def lesson_detail(request, lesson_id: str):
     mode = normalize_mode(request.GET.get("mode", "learn"))
 
     cached = _ensure_cached_lesson(lesson_id, module_topic, mode)
+    response = _strip_answer_keys(cached)
 
     if user is None:
-        return JsonResponse(_strip_answer_keys(cached))
+        return JsonResponse(response)
 
     lesson_record = Lesson.objects.prefetch_related("questions").filter(lesson_key=lesson_id).first()
     if lesson_record is not None:
         ensure_lesson_state(user, lesson_record)
+        progress = get_lesson_state_payload(user, lesson_record)
+        if progress is not None:
+            response["progress"] = progress
 
-    return JsonResponse(_strip_answer_keys(cached))
+    return JsonResponse(response)
 
 
 @csrf_exempt
@@ -192,14 +199,16 @@ def lesson_answer(request, lesson_id: str):
             )
         except AgentError:
             xp = calculate_xp(correct=correct, hint_level=hint_usage)
+            earned_star = question_earns_star(correct=correct, hint_usage=hint_usage)
             progress_result = {
                 "xp_earned": xp,
                 "total_xp": lesson_prog.xp_earned + xp,
-                "stars_remaining": calculate_stars(hint_usage),
+                "star_earned": earned_star,
                 "status": new_status,
                 "correctness": correct,
             }
 
+        earned_star = progress_result.get("star_earned", False)
         update_lesson_progress(
             user_id=legacy_user_id,
             lesson_id=lesson_id,
@@ -208,7 +217,7 @@ def lesson_answer(request, lesson_id: str):
             correct=correct,
             hint_level=hint_usage,
             xp_earned=progress_result["xp_earned"],
-            stars_remaining=progress_result["stars_remaining"],
+            stars_remaining=progress_result.get("stars_remaining", 0),
             new_status=progress_result["status"],
         )
 
@@ -217,7 +226,8 @@ def lesson_answer(request, lesson_id: str):
             "next_prompt": evaluation.get("next_prompt", ""),
             "progress": {
                 "xp": progress_result["total_xp"],
-                "stars_remaining": progress_result["stars_remaining"],
+                "star_earned": earned_star,
+                "total_stars": 0,
                 "status": progress_result["status"],
             },
         })
@@ -336,3 +346,46 @@ def lesson_hint(request, lesson_id: str):
         "hint": hint_text,
         "stars_remaining": stars_remaining,
     })
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def lesson_reset(request, lesson_id: str):
+    """
+    POST /api/lessons/{lesson_id}/reset
+
+    Resets the user's progress for this lesson (clears attempts, XP, stars).
+    """
+    user = get_authenticated_user(request)
+    if user is None:
+        return JsonResponse({"detail": "Authentication required."}, status=401)
+
+    lesson_record = Lesson.objects.filter(lesson_key=lesson_id).first()
+    if lesson_record is None:
+        return JsonResponse({"detail": "Lesson not found."}, status=404)
+
+    result = reset_lesson_state(user, lesson_record)
+    return JsonResponse(result)
+
+
+@csrf_exempt
+@require_http_methods(["DELETE"])
+def lesson_delete(request, lesson_id: str):
+    """
+    DELETE /api/lessons/{lesson_id}/state
+
+    Deletes the user's progress record for this lesson entirely.
+    """
+    user = get_authenticated_user(request)
+    if user is None:
+        return JsonResponse({"detail": "Authentication required."}, status=401)
+
+    lesson_record = Lesson.objects.filter(lesson_key=lesson_id).first()
+    if lesson_record is None:
+        return JsonResponse({"detail": "Lesson not found."}, status=404)
+
+    deleted = delete_lesson_state(user, lesson_record)
+    if not deleted:
+        return JsonResponse({"detail": "No progress to delete."}, status=404)
+
+    return JsonResponse({"deleted": True})

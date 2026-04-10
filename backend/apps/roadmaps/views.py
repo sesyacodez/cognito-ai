@@ -5,6 +5,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
 from apps.roadmaps.services import (
+    _get_module_progress_map,
     create_roadmap_for_user,
     get_authenticated_user,
     get_roadmap_for_user,
@@ -47,4 +48,5 @@ def roadmaps_detail(request, roadmap_id):
         return _auth_error()
 
     roadmap = get_roadmap_for_user(user, roadmap_id)
-    return JsonResponse(serialize_roadmap(roadmap))
+    module_progress = _get_module_progress_map(user)
+    return JsonResponse(serialize_roadmap(roadmap, module_progress))

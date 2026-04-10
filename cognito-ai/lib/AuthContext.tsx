@@ -54,22 +54,46 @@ function mapFirebaseError(err: unknown): Error {
   return err instanceof Error ? err : new Error("Authentication failed.");
 }
 
+async function syncWithBackend(firebaseUser: FirebaseUser): Promise<AuthUser> {
+  const mapped = mapFirebaseUser(firebaseUser);
+  try {
+    const idToken = await firebaseUser.getIdToken();
+    const res = await fetch("/api/auth/firebase-login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id_token: idToken }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      const backendUser: AuthUser = {
+        id: data.user?.id ?? mapped.id,
+        email: data.user?.email ?? mapped.email,
+        name: data.user?.name ?? mapped.name,
+      };
+      setSession(data.session_token, backendUser);
+      return backendUser;
+    }
+  } catch {
+    // Backend unreachable — fall back to Firebase UID as token
+  }
+  setSession(firebaseUser.uid, mapped);
+  return mapped;
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const initialized = useRef(false);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        const mapped = mapFirebaseUser(firebaseUser);
-        setUser(mapped);
-        setSession(firebaseUser.uid, mapped);
+        const backendUser = await syncWithBackend(firebaseUser);
+        setUser(backendUser);
       } else {
         setUser(null);
         clearSession();
       }
-      // Only set isLoading false on the first call (session restore check)
       if (!initialized.current) {
         initialized.current = true;
         setIsLoading(false);
@@ -106,11 +130,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const { user: fbUser } = await createUserWithEmailAndPassword(auth, email, password);
       await updateProfile(fbUser, { displayName: name });
-      // Manually update state with the name since onAuthStateChanged
-      // may fire before updateProfile completes
-      const mapped: AuthUser = { id: fbUser.uid, email: fbUser.email ?? "", name };
-      setUser(mapped);
-      setSession(fbUser.uid, mapped);
+      const backendUser = await syncWithBackend(fbUser);
+      backendUser.name = name;
+      setUser(backendUser);
     } catch (err) {
       throw mapFirebaseError(err);
     } finally {

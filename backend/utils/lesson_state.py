@@ -65,12 +65,12 @@ def calculate_xp(correct: bool, hint_level: int = 0) -> int:
         return 10
 
 
-def calculate_stars(hint_usage: int) -> int:
+def question_earns_star(correct: bool, hint_usage: int) -> bool:
     """
-    Calculate stars remaining (out of 3).
-    Each hint used (hint_level 1, 2, 3) deducts one star.
+    Returns True if this question earns its star.
+    A star is only awarded when the answer is correct AND no hints were used.
     """
-    return max(0, 3 - hint_usage)
+    return correct and hint_usage == 0
 
 
 def transition_status(current_status: str, answered_count: int, total_questions: int) -> str:
