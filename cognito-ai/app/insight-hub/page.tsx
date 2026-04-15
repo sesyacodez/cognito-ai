@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useAuth } from "@/lib/AuthContext";
 import { getSession } from "@/lib/auth";
@@ -80,12 +80,60 @@ export default function InsightHub() {
   const [showDropdown, setShowDropdown] = useState(false);
   const [expandedJourney, setExpandedJourney] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [ocrLoading, setOcrLoading] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleLogout = async () => {
     await logout();
     router.push("/");
   };
+
+  const handleImageUpload = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      setOcrLoading(true);
+      try {
+        const buffer = await file.arrayBuffer();
+        const base64 = btoa(
+          new Uint8Array(buffer).reduce((s, b) => s + String.fromCharCode(b), ""),
+        );
+
+        const session = getSession();
+        const headers: HeadersInit = { "Content-Type": "application/json" };
+        if (session) headers["Authorization"] = `Bearer ${session.token}`;
+
+        const res = await fetch("/api/vision", {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ image: base64, mime_type: file.type || "image/png" }),
+        });
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.detail || "Vision request failed");
+        }
+
+        const { text } = await res.json();
+        const cleaned = (text ?? "").trim();
+        if (cleaned) {
+          setInputValue((prev) => (prev ? `${prev}\n${cleaned}` : cleaned));
+          inputRef.current?.focus();
+        } else {
+          setError("No text detected in the image. Try a clearer photo.");
+        }
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : "Failed to read text from image. Please try again.",
+        );
+      } finally {
+        setOcrLoading(false);
+        e.target.value = "";
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
     fetchJourneys();
@@ -403,17 +451,33 @@ export default function InsightHub() {
                         />
                       </svg>
                     </button>
-                    {/* image icon */}
+                    {/* image icon — vision LLM */}
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleImageUpload}
+                    />
                     <button
                       type="button"
-                      className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-500 hover:text-gray-300 hover:bg-gray-700/30 transition"
-                      title="Add image"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={ocrLoading}
+                      className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-500 hover:text-gray-300 hover:bg-gray-700/30 transition disabled:opacity-60"
+                      title={ocrLoading ? "Reading image…" : "Extract text from image"}
                     >
-                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
-                        <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="2" />
-                        <circle cx="8.5" cy="8.5" r="1.5" fill="currentColor" />
-                        <path d="M21 15l-5-5L5 21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
+                      {ocrLoading ? (
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" className="animate-spin">
+                          <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" opacity="0.25" />
+                          <path d="M12 2a10 10 0 019.8 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                        </svg>
+                      ) : (
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+                          <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="2" />
+                          <circle cx="8.5" cy="8.5" r="1.5" fill="currentColor" />
+                          <path d="M21 15l-5-5L5 21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      )}
                     </button>
                     {/* sparkle icon */}
                     <div className="w-7 h-7 flex items-center justify-center text-gray-500">
@@ -431,7 +495,7 @@ export default function InsightHub() {
                   {/* submit button */}
                   <button
                     type="submit"
-                    disabled={isCreating || !inputValue.trim()}
+                    disabled={isCreating || ocrLoading || !inputValue.trim()}
                     className="w-8 h-8 flex items-center justify-center rounded-lg bg-blue-600 hover:bg-blue-500 disabled:bg-gray-700 disabled:text-gray-500 text-white transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-[#0f1224]"
                     aria-label="Submit search"
                   >
