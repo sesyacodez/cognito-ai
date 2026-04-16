@@ -46,6 +46,69 @@ def get_placeholder_roadmap(topic: str) -> dict:
     }
 
 
+def get_adaptive_placeholder_roadmap(topic: str, mode: str = "learn") -> dict:
+    """
+    Returns a deterministic fallback roadmap whose module count adapts to topic complexity.
+    This is used when the decomposer skill cannot be reached.
+    """
+    topic_clean = topic.strip() or "General Learning Path"
+    mode_clean = "solve" if str(mode).strip().lower() == "solve" else "learn"
+
+    word_count = len(topic_clean.split())
+    if mode_clean == "solve":
+        if word_count <= 4:
+            module_count = 1
+        elif word_count <= 10:
+            module_count = 3
+        else:
+            module_count = 5
+        stage_templates = [
+            ("Problem Framing", "Clarify the scope, constraints, and desired outcome."),
+            ("Implementation Plan", "Break the solution into concrete executable steps."),
+            ("Build and Validate", "Implement the solution and verify against requirements."),
+            ("Hardening", "Address edge cases, reliability, and maintainability concerns."),
+            ("Delivery", "Package and document the final solution for use."),
+        ]
+    else:
+        if word_count <= 3:
+            module_count = 3
+        elif word_count <= 7:
+            module_count = 4
+        elif word_count <= 12:
+            module_count = 5
+        elif word_count <= 18:
+            module_count = 6
+        else:
+            module_count = 7
+        stage_templates = [
+            ("Foundations", "Learn the basics and fundamental concepts."),
+            ("Core Concepts", "Explore the essential principles and theories."),
+            ("Guided Practice", "Apply concepts in structured exercises."),
+            ("Intermediate Techniques", "Develop intermediate skills and apply techniques."),
+            ("Advanced Applications", "Use advanced patterns in realistic scenarios."),
+            ("Integration", "Connect concepts into a coherent end-to-end workflow."),
+            ("Capstone Project", "Complete a capstone project to demonstrate your learning."),
+        ]
+
+    modules = []
+    for index in range(module_count):
+        stage_title, stage_outcome = stage_templates[index]
+        modules.append(
+            {
+                "id": f"placeholder-{uuid4().hex[:6]}",
+                "index": index,
+                "title": f"{topic_clean}: {stage_title}",
+                "outcome": stage_outcome,
+            }
+        )
+
+    return {
+        "roadmap_id": f"placeholder-{uuid4().hex[:8]}",
+        "mode": mode_clean,
+        "modules": modules,
+    }
+
+
 def get_placeholder_lesson(module_topic: str, mode: str = "learn") -> dict:
     """
     Returns a static lesson with micro-theory and 3 questions.

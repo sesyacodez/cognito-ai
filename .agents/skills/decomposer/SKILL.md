@@ -1,11 +1,11 @@
 ---
 name: decomposer
-description: Generate a 5-module learning roadmap from a topic. Use this whenever the user wants a learning plan, course outline, curriculum, or module breakdown for a topic, even if they do not say "roadmap" explicitly.
+description: Generate a learning roadmap with a variable number of modules based on topic complexity. Use this whenever the user wants a learning plan, course outline, curriculum, or module breakdown for a topic, even if they do not say "roadmap" explicitly.
 ---
 
 # decomposer
 
-Create a 5-module learning roadmap from a single topic.
+Create a learning roadmap from a single topic with module count based on complexity.
 
 ## When to use
 
@@ -39,14 +39,15 @@ Schema:
 
 ## Constraints
 
-- Output exactly 5 modules.
-- Each `outcome` is a short, single-sentence learning outcome.
-- `order` must be 1 through 5.
+- In `learn` mode, output 3-7 modules depending on topic breadth.
+- In `solve` mode, output 1 module for simple tasks and 2-5 for complex tasks.
+- Each `outcome` is a short, single-sentence learning outcome or concrete deliverable.
+- `order` must be sequential starting at 1.
 
 ## Procedure
 
 1. Read the topic.
-2. Propose a logical 5-step learning progression from fundamentals to applied work.
+2. Assess complexity and propose an appropriate progression from fundamentals to applied work.
 3. Write a clear title and one outcome per module.
 4. Emit JSON only.
 
@@ -82,27 +83,15 @@ Output:
       },
       {
         "id": "m2",
-        "title": "Filtering Data",
-        "outcome": "Use WHERE, AND, OR, and LIKE to filter query results.",
+        "title": "Querying and Filtering",
+        "outcome": "Use WHERE, ORDER BY, and LIMIT to retrieve the right records.",
         "order": 2
       },
       {
         "id": "m3",
-        "title": "Aggregations",
-        "outcome": "Apply COUNT, SUM, AVG with GROUP BY and HAVING.",
+        "title": "Aggregations and Joins",
+        "outcome": "Summarize data with GROUP BY and combine tables with INNER and LEFT JOIN.",
         "order": 3
-      },
-      {
-        "id": "m4",
-        "title": "Joins",
-        "outcome": "Combine tables with INNER and LEFT joins to answer multi-table questions.",
-        "order": 4
-      },
-      {
-        "id": "m5",
-        "title": "Practical Queries",
-        "outcome": "Write complete queries for real-world reporting scenarios.",
-        "order": 5
       }
     ]
   }

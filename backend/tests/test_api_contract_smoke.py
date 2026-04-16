@@ -49,6 +49,37 @@ def _mock_run_skill_lesson_flow(skill_name, mode="learn", **kwargs):
     raise AssertionError(f"Unexpected skill: {skill_name}")
 
 
+def _mock_run_skill_roadmap_dynamic(skill_name, mode="learn", **kwargs):
+    if skill_name != "decomposer":
+        raise AssertionError(f"Unexpected skill: {skill_name}")
+
+    topic = kwargs.get("topic", "General Learning Path")
+    return {
+        "roadmap_id": "dynamic-roadmap-id",
+        "mode": mode,
+        "modules": [
+            {
+                "id": "m1",
+                "title": f"{topic}: Foundations",
+                "index": 0,
+                "outcome": "Understand the core foundations.",
+            },
+            {
+                "id": "m2",
+                "title": f"{topic}: Guided Practice",
+                "index": 1,
+                "outcome": "Apply concepts in structured exercises.",
+            },
+            {
+                "id": "m3",
+                "title": f"{topic}: Real Application",
+                "index": 2,
+                "outcome": "Complete a practical mini-project.",
+            },
+        ],
+    }
+
+
 class ApiContractSmokeTests(TestCase):
     def setUp(self):
         reset_auth_store()
@@ -148,7 +179,22 @@ class ApiContractSmokeTests(TestCase):
         self.assertEqual(len(matching), 1)
         self.assertEqual(matching[0]["topic"], "Database Design")
         self.assertEqual(matching[0]["type"], "topic")
-        self.assertEqual(len(matching[0]["modules"]), 5)
+        self.assertGreaterEqual(len(matching[0]["modules"]), 1)
+
+    @patch("apps.roadmaps.services.run_skill", side_effect=_mock_run_skill_roadmap_dynamic)
+    def test_roadmaps_post_uses_dynamic_module_count_from_decomposer(self, _mock_run_skill):
+        response = self.client.post(
+            "/api/roadmaps",
+            data=json.dumps({"topic": "Git Basics", "mode": "learn"}),
+            content_type="application/json",
+            **self.auth_headers,
+        )
+
+        self.assertEqual(response.status_code, 201)
+        payload = response.json()
+        self.assertEqual(len(payload["modules"]), 3)
+        self.assertEqual([module["index"] for module in payload["modules"]], [0, 1, 2])
+        self.assertTrue(all("Git Basics" in module["title"] for module in payload["modules"]))
 
     def test_roadmap_detail_returns_only_owner_roadmap(self):
         create_response = self.client.post(

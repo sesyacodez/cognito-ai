@@ -1,13 +1,19 @@
 from __future__ import annotations
 
+import logging
+
 from django.conf import settings
 from django.db import transaction
 from django.shortcuts import get_object_or_404
 
+from agent.runner import AgentError, run_skill
 from apps.auth.services import resolve_user_from_bearer_token
 from apps.lessons.models import LessonState
 from apps.roadmaps.models import Roadmap, RoadmapModule
-from utils.fixtures import get_placeholder_roadmap
+from utils.fixtures import get_adaptive_placeholder_roadmap
+
+
+logger = logging.getLogger(__name__)
 
 
 def normalize_mode(mode: str) -> str:
@@ -103,9 +109,34 @@ def create_roadmap_for_user(user, topic: str, mode: str) -> Roadmap:
         mode=normalized_mode,
     )
 
-    placeholder = get_placeholder_roadmap(normalized_topic)
+    source_modules = []
+    last_agent_error: AgentError | None = None
+    for _ in range(2):
+        try:
+            generated_roadmap = run_skill(
+                "decomposer",
+                mode=normalized_mode,
+                topic=normalized_topic,
+            )
+            source_modules = generated_roadmap.get("modules", [])
+            if source_modules:
+                break
+        except AgentError as exc:
+            last_agent_error = exc
+
+    if not source_modules:
+        if last_agent_error is not None:
+            logger.warning(
+                "Decomposer failed for topic '%s' (mode=%s). Falling back to adaptive placeholder. Error: %s",
+                normalized_topic,
+                normalized_mode,
+                last_agent_error,
+            )
+        placeholder = get_adaptive_placeholder_roadmap(normalized_topic, mode=normalized_mode)
+        source_modules = placeholder.get("modules", [])
+
     modules = []
-    for fallback_index, module_data in enumerate(placeholder.get("modules", [])):
+    for fallback_index, module_data in enumerate(source_modules):
         modules.append(
             RoadmapModule(
                 roadmap=roadmap,
