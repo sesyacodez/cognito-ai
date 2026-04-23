@@ -1,148 +1,234 @@
 "use client";
 
-import React, { useState } from "react";
+import Link from "next/link";
+import Image from "next/image";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/AuthContext";
 
+const featureCards = [
+  {
+    title: "Adaptive lessons",
+    description:
+      "Cognito.AI adjusts the next prompt based on how you respond, so the path stays relevant.",
+  },
+  {
+    title: "Guided practice",
+    description:
+      "Each session keeps you active with feedback, nudges, and Socratic follow-ups.",
+  },
+  {
+    title: "Progress dashboard",
+    description:
+      "Track streaks, roadmaps, and recent activity from one focused starting point.",
+  },
+];
+
+const journeySteps = [
+  {
+    title: "Pick a roadmap",
+    description:
+      "Choose the goal you want to work on and let the app organize the path ahead.",
+  },
+  {
+    title: "Learn by doing",
+    description:
+      "Work through prompts and feedback loops that keep the lesson interactive.",
+  },
+  {
+    title: "Return to the dashboard",
+    description:
+      "Jump back in anytime and continue from the next best step.",
+  },
+];
+
 export default function Home() {
   const router = useRouter();
-  const { login, loginWithGoogle, isLoading } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-
-  async function handleEmailLogin(e: React.FormEvent) {
-    e.preventDefault();
-    setError("");
-    
-    try {
-      await login(email, password);
-      router.push("/insight-hub");
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Login failed. Please try again."
-      );
+  useEffect(() => {
+    if (!isLoading && isAuthenticated) {
+      router.replace("/dashboard");
     }
-  }
+  }, [isAuthenticated, isLoading, router]);
 
-  async function handleGoogleLogin() {
-    setError("");
-    try {
-      await loginWithGoogle();
-      router.push("/insight-hub");
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Google login failed. Please try again."
-      );
-    }
+  if (isLoading || isAuthenticated) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#060816]">
+        <div className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/75">
+          Loading Cognito.AI...
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#0b0f1e] font-sans">
-      {/* card container */}
-      <main className="w-full max-w-sm rounded-2xl bg-[#0f1224] bg-opacity-90 p-8 shadow-2xl">
-        <h1 className="text-center text-3xl font-bold text-white pb-5">
-          COGNITO.AI
-        </h1>
-        <p className="mt-2 text-center text-sm text-gray-300">
-          Access Portal<br />
-          <span className="text-xs text-gray-400">
-            An AI mentor that actually teaches.
-          </span>
-        </p>
+    <div className="relative min-h-screen overflow-hidden bg-[#060816] text-white">
+      <div
+        className="absolute inset-0"
+        style={{
+          backgroundImage:
+            "radial-gradient(circle at top left, rgba(165, 180, 252, 0.22), transparent 34%), radial-gradient(circle at 85% 20%, rgba(165, 180, 252, 0.18), transparent 28%), linear-gradient(180deg, #08111f 0%, #060816 45%, #05060d 100%)",
+        }}
+      />
+      <div
+        className="absolute inset-0 opacity-20"
+        style={{
+          backgroundImage:
+            "linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px)",
+          backgroundSize: "72px 72px",
+        }}
+      />
 
-        <div className="mt-6 space-y-3">
-          <button
-            type="button"
-            onClick={handleGoogleLogin}
-            disabled={isLoading}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-white text-black rounded-md hover:bg-gray-100 transition cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+      <div className="relative mx-auto flex min-h-screen max-w-7xl flex-col px-6 py-6 lg:px-10">
+        <header className="flex items-center justify-between gap-4 border-b border-white/10 pb-6">
+          <div className="flex items-center gap-3">
+            <Image
+              src="/CognitoAI%20logo.svg"
+              alt="Cognito.AI logo"
+              width={156}
+              height={114}
+              priority
+              unoptimized
+              className="h-12 w-auto drop-shadow-[0_0_18px_rgba(165,180,252,0.28)]"
+            />
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.28em] text-[#c7d2fe]">
+                Cognito.AI
+              </p>
+              <p className="text-xs text-white/55">Adaptive learning mentor</p>
+            </div>
+          </div>
+
+          <Link
+            href="/signin"
+            className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white/85 transition hover:bg-white/10"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 488 512"
-              className="h-5 w-5"
-            >
-              <path
-                fill="#4285F4"
-                d="M488 261.8c0-17.4-1.6-34.1-4.6-50.4H249v95.5h134.8c-5.8 31.2-23.5 57.7-50
-                75.5v62.7h80.9c47.3-43.6 74.3-107.7 74.3-183.3z"
-              />
-              <path
-                fill="#34A853"
-                d="M249 512c67.2 0 123.7-22.4 164.9-60.7l-80.9-62.7c-22.6 15.2-51.4
-                24.2-84 24.2-64.6 0-119.4-43.6-139.1-102.2H28.9v64.3C70.1 467.4 154.5 512 249
-                512z"
-              />
-              <path
-                fill="#FBBC05"
-                d="M109.9 307.7c-4.8-14.4-7.6-29.6-7.6-45.3s2.8-30.9
-                7.6-45.3V152h-81C7.1 195.9 0 230.4 0 262.4s7.1 66.5 28.9
-                110L109.9 307.7z"
-              />
-              <path
-                fill="#EA4335"
-                d="M249 100.8c35.6 0 67.7 12.3 93 36.3l69.7-69.7C364.7
-                29.2 308.2 0 249 0 154.5 0 70.1 44.6 28.9
-                111l81 64.3c19.7-58.6 74.5-102.2 139.1-102.2z"
-              />
-            </svg>
-            {isLoading ? "Signing in..." : "Continue with Google"}
-          </button>
+            Sign in
+          </Link>
+        </header>
 
-          {/* username/password form */}
-          <form className="space-y-3 mt-4" onSubmit={handleEmailLogin}>
-            {error && (
-              <div className="p-2 bg-red-950 border border-red-700 rounded text-red-200 text-xs">
-                {error}
+        <main className="grid flex-1 items-center gap-12 py-10 lg:grid-cols-[1.08fr_0.92fr] lg:py-16">
+          <section className="space-y-8">
+            <div className="inline-flex items-center gap-2 rounded-full border border-[#a5b4fc]/20 bg-[#a5b4fc]/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-[#e0e7ff]">
+              Your AI mentor, ready on startup
+            </div>
+
+            <div className="space-y-5">
+              <h1 className="max-w-2xl text-5xl font-semibold tracking-tight text-white sm:text-6xl lg:text-7xl">
+                Learn faster with a mentor that keeps the next step obvious.
+              </h1>
+              <p className="max-w-2xl text-lg leading-8 text-white/70 sm:text-xl">
+                Cognito.AI turns roadmaps, practice, and progress tracking into one
+                guided flow. Open the app, choose your path, and keep moving without
+                getting lost in menus.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap gap-4">
+              <Link
+                href="/signup"
+                className="inline-flex items-center justify-center rounded-full bg-white px-6 py-3 text-sm font-semibold text-[#08111f] transition hover:bg-[#e0e7ff]"
+              >
+                Try out now
+              </Link>
+              <Link
+                href="/signin"
+                className="inline-flex items-center justify-center rounded-full border border-white/15 bg-white/5 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
+              >
+                Sign in
+              </Link>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-3">
+              {featureCards.map((feature) => (
+                <article
+                  key={feature.title}
+                  className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur"
+                >
+                  <p className="text-sm font-semibold text-white">{feature.title}</p>
+                  <p className="mt-2 text-sm leading-6 text-white/60">
+                    {feature.description}
+                  </p>
+                </article>
+              ))}
+            </div>
+          </section>
+
+          <aside className="space-y-4">
+            <div className="rounded-[2rem] border border-white/10 bg-white/5 p-5 shadow-2xl backdrop-blur">
+              <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.3em] text-[#c7d2fe]/80">
+                    At a glance
+                  </p>
+                  <h2 className="mt-2 text-xl font-semibold text-white">
+                    What Cognito.AI feels like
+                  </h2>
+                </div>
+                <div className="rounded-full border border-[#a5b4fc]/20 bg-[#a5b4fc]/15 px-3 py-1 text-xs font-medium text-[#eef2ff]">
+                  Live learning
+                </div>
               </div>
-            )}
-            <input
-              type="email"
-              placeholder="Email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              disabled={isLoading}
-              required
-              className="w-full px-4 py-2 bg-transparent border border-white text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60"
-            />
-            <input
-              type="password"
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              disabled={isLoading}
-              required
-              className="w-full px-4 py-2 bg-transparent border border-white text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60"
-            />
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full px-4 py-2 bg-white text-black rounded-md hover:bg-gray-100 transition cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              {isLoading ? "Signing in..." : "Sign In"}
-            </button>
-          </form>
-        </div>
 
-        <p className="mt-6 text-xs text-center text-gray-400">
-          By connecting you agree to our{' '}
-          <a href="/terms" className="underline">
-            Terms of Service
-          </a>{' '}
-          and{' '}
-          <a href="/privacy" className="underline">
-            Privacy Policy
-          </a>.
-        </p>
-        <p className="mt-4 text-xs text-center text-gray-400">
-          Don&apos;t have an account?{' '}
-          <a href="/signup" className="underline">
-            Sign up
-          </a>
-        </p>
-      </main>
+              <div className="mt-5 space-y-3">
+                {journeySteps.map((step, index) => (
+                  <div
+                    key={step.title}
+                    className="flex gap-4 rounded-2xl border border-white/10 bg-[#0a1020]/80 px-4 py-4"
+                  >
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/10 text-sm font-semibold text-[#e0e7ff]">
+                      {String(index + 1).padStart(2, "0")}
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-white">{step.title}</p>
+                      <p className="mt-1 text-sm leading-6 text-white/65">
+                        {step.description}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-[2rem] border border-[#a5b4fc]/20 bg-[#a5b4fc]/10 p-5">
+              <p className="text-xs uppercase tracking-[0.3em] text-[#e0e7ff]/80">
+                Why it stands out
+              </p>
+              <p className="mt-3 text-sm leading-6 text-[#eef2ff]/90">
+                Cognito.AI keeps the experience focused: a clear roadmap, guided
+                practice, and a dashboard that shows progress at a glance.
+              </p>
+            </div>
+          </aside>
+        </main>
+
+        <section className="pb-10">
+          <div className="rounded-[2rem] border border-white/10 bg-white/5 p-6 backdrop-blur">
+            <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+              <div className="max-w-2xl">
+                <p className="text-xs uppercase tracking-[0.3em] text-[#c7d2fe]/80">
+                  Ready when you are
+                </p>
+                <h2 className="mt-3 text-2xl font-semibold text-white sm:text-3xl">
+                  Start your first guided session in seconds.
+                </h2>
+                <p className="mt-3 text-sm leading-6 text-white/65">
+                  Create an account, try the onboarding flow, and jump into the
+                  dashboard whenever you come back.
+                </p>
+              </div>
+
+              <Link
+                href="/signup"
+                className="inline-flex items-center justify-center rounded-full bg-white px-6 py-3 text-sm font-semibold text-[#08111f] transition hover:bg-[#e0e7ff]"
+              >
+                Try out now
+              </Link>
+            </div>
+          </div>
+        </section>
+      </div>
     </div>
   );
 }

@@ -1,18 +1,25 @@
 "use client";
 
-import React, { useState } from "react";
+import Link from "next/link";
+import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/AuthContext";
 
 export default function SignUp() {
   const router = useRouter();
-  const { register, loginWithGoogle, isLoading } = useAuth();
+  const { register, loginWithGoogle, isLoading, isAuthenticated } = useAuth();
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [errors, setErrors] = useState<{ name?: string; email?: string; password?: string; confirmPassword?: string; general?: string }>({});
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      router.replace("/dashboard");
+    }
+  }, [isAuthenticated, router]);
 
   function validate() {
     const e: typeof errors = {};
@@ -38,7 +45,6 @@ export default function SignUp() {
 
     try {
       await register(name, email, password);
-      router.push("/insight-hub");
     } catch (err) {
       setErrors({
         general: err instanceof Error ? err.message : "Registration failed. Please try again.",
@@ -50,13 +56,22 @@ export default function SignUp() {
     setErrors({});
     try {
       await loginWithGoogle();
-      router.push("/insight-hub");
     } catch (err) {
       setErrors({
         general:
           err instanceof Error ? err.message : "Google sign-up failed. Please try again.",
       });
     }
+  }
+
+  if (isLoading || isAuthenticated) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#0b0f1e]">
+        <div className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/75">
+          {isAuthenticated ? "Redirecting to dashboard..." : "Loading Cognito.AI..."}
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -189,9 +204,9 @@ export default function SignUp() {
         </p>
         <p className="mt-4 text-xs text-center text-gray-400">
           Already have an account?{' '}
-          <a href="/" className="underline">
+          <Link href="/signin" className="underline">
             Sign in
-          </a>
+          </Link>
         </p>
       </main>
     </div>
