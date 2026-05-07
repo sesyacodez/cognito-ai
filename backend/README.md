@@ -34,6 +34,7 @@ cp .env.example .env
 | `DJANGO_SECRET_KEY` | Any random string |
 | `OPENROUTER_API_KEY` | Required for live AI generation. Leave blank to use fixture fallbacks. |
 | `DECOMPOSER_MODEL` | Model for roadmap decomposition. Defaults to `nvidia/nemotron-3-nano-30b-a3b:free` |
+| `CURRICULUM_PLANNER_MODEL` | Model for broad-topic curriculum planning. Falls back to `DECOMPOSER_MODEL` if unset. |
 | `LESSON_GENERATOR_MODEL` | Model for lesson generation. Falls back to `DECOMPOSER_MODEL` if unset. |
 | `SOCRATIC_TUTOR_MODEL` | Model for answer evaluation + hints. Falls back to `DECOMPOSER_MODEL` if unset. |
 | `AUTH_STUB_ALLOW_FIREBASE_FALLBACK` | Set `true` for local dev |
@@ -52,8 +53,12 @@ python manage.py runserver 0.0.0.0:8000
 | POST | `/api/auth/login` | Login with email + password |
 | POST | `/api/auth/firebase-login` | Exchange Firebase ID token for session |
 | GET | `/api/roadmaps` | List the authenticated user’s roadmaps |
-| POST | `/api/roadmaps` | Create and persist a roadmap for the authenticated user |
+| POST | `/api/roadmaps` | Discriminated: persist a roadmap for narrow topics, or return a curriculum preview for broad topics |
 | GET | `/api/roadmaps/{roadmap_id}` | Fetch one roadmap owned by the authenticated user |
+| GET | `/api/curriculums` | List the authenticated user's curriculums with rollup progress |
+| POST | `/api/curriculums` | Confirm a curriculum plan; persists it and eagerly expands the first course |
+| GET | `/api/curriculums/{curriculum_id}` | Fetch one curriculum with all course stubs |
+| POST | `/api/curriculums/{curriculum_id}/courses/{course_id}/expand` | Idempotently generate the roadmap for a curriculum course |
 | GET | `/api/dashboard` | Aggregate lesson counts, progress summaries, and streak info |
 | GET | `/api/lessons/{lesson_id}` | Fetch lesson micro-theory + questions for the authenticated user |
 | POST | `/api/lessons/{lesson_id}/answer` | Submit answer, get Socratic evaluation + progress |
@@ -75,21 +80,85 @@ python manage.py runserver 0.0.0.0:8000
 
 ```json
 // Request
-{ "topic": "Machine Learning", "mode": "learn" }   // mode: "learn" | "solve", defaults to "learn"
-
-// Response 201
 {
-  "roadmap_id": "<uuid4>",
-  "mode": "learn",
-  "modules": [
-    { "id": "...", "title": "...", "outcome": "...", "index": 0 }
-  ]
+  "topic": "Python loops",
+  "mode": "learn",          // "learn" | "solve", defaults to "learn"
+  "force_roadmap": false     // optional; when true, skip curriculum split for broad topics
 }
 ```
 
-If `OPENROUTER_API_KEY` is not set, the endpoint returns an adaptive placeholder roadmap — no errors.
+The response is **discriminated** by `kind`. For narrow topics:
 
-Roadmaps are stored in the `roadmaps` and `modules` tables and returned in owner-scoped lists.
+```json
+// Response 201 — roadmap persisted
+{
+  "kind": "roadmap",
+  "roadmap": {
+    "roadmap_id": "<uuid4>",
+    "mode": "learn",
+    "topic": "Python loops",
+    "modules": [
+      { "id": "...", "title": "...", "outcome": "...", "index": 0 }
+    ]
+  }
+}
+```
+
+For broad topics (e.g. "Machine Learning"), the API returns a non-persisting
+preview the user must confirm before any DB writes happen:
+
+```json
+// Response 200 — curriculum preview (no DB writes yet)
+{
+  "kind": "curriculum_preview",
+  "plan": {
+    "topic": "Machine Learning",
+    "mode": "learn",
+    "courses": [
+      { "id": "<uuid4>", "title": "Linear Algebra", "outcome": "...", "index": 0 }
+    ],
+    "source": "agent"
+  }
+}
+```
+
+If `OPENROUTER_API_KEY` is not set, both branches return adaptive placeholders — no errors.
+
+Roadmaps are stored in the `roadmaps` and `modules` tables. Curriculums are stored
+in `curriculums` and `curriculum_courses`, with each course optionally linked to
+its expanded roadmap.
+
+### POST /api/curriculums
+
+```json
+// Request — body comes from the user-confirmed preview
+{
+  "topic": "Machine Learning",
+  "mode": "learn",
+  "courses": [
+    { "index": 0, "title": "Linear Algebra", "outcome": "..." },
+    { "index": 1, "title": "Probability", "outcome": "..." }
+  ]
+}
+
+// Response 201 — first course's roadmap is generated eagerly
+{
+  "curriculum_id": "<uuid4>",
+  "topic": "Machine Learning",
+  "mode": "learn",
+  "courses": [
+    { "id": "<uuid4>", "index": 0, "title": "...", "expanded": true, "roadmap_id": "<uuid4>" },
+    { "id": "<uuid4>", "index": 1, "title": "...", "expanded": false, "roadmap_id": null }
+  ],
+  "first_course_id": "<uuid4>",
+  "first_roadmap": { /* roadmap detail */ }
+}
+```
+
+### POST /api/curriculums/{id}/courses/{course_id}/expand
+
+Idempotent — generates and links the roadmap for a course, or returns the
+existing one if already expanded.
 
 ### GET /api/dashboard
 
@@ -119,6 +188,7 @@ Returns a dashboard summary for the authenticated user.
     "last_active_at": "2026-04-06T10:00:00+00:00"
   },
   "roadmaps": [],
+  "curriculums": [],
   "lessons": [],
   "recent_activity": []
 }

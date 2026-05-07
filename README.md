@@ -22,6 +22,8 @@ Routes currently present:
 - `/signup` registration page.
 - `/insight-hub` main journey creation/list page.
 - `/workspace/[lessonId]` lesson workspace.
+- `/curriculum/[id]` curriculum detail with course list and per-course expansion.
+- `/dashboard` progress and journey rollup.
 
 Implemented UI behavior:
 
@@ -47,25 +49,31 @@ Live endpoints:
 - `POST /api/auth/login`
 - `POST /api/auth/firebase-login`
 - `GET /api/roadmaps`
-- `POST /api/roadmaps`
+- `POST /api/roadmaps` — discriminated response: returns either a `roadmap` or a `curriculum_preview` plan for broad topics.
+- `GET /api/curriculums`
+- `POST /api/curriculums` — confirms a curriculum plan and eagerly generates the first course's roadmap.
+- `GET /api/curriculums/{id}`
+- `POST /api/curriculums/{id}/courses/{course_id}/expand` — idempotent course-to-roadmap expansion.
 - `GET /api/lessons/{lesson_id}`
 - `POST /api/lessons/{lesson_id}/answer`
 - `POST /api/lessons/{lesson_id}/hint`
+- `GET /api/dashboard`
 
 Current backend behavior:
 
 - Auth endpoints use stub/in-memory storage helpers for local workflow.
-- `GET /api/roadmaps` returns an empty list placeholder.
-- `POST /api/roadmaps` creates a persisted roadmap with an adaptive module count based on topic breadth.
+- `POST /api/roadmaps` detects broad topics (e.g. "Machine Learning") and returns a 2–6 course curriculum preview the user must confirm before persisting; narrow topics persist a roadmap directly with adaptive module count (1–7 modules in learn mode).
+- `POST /api/curriculums` persists the curriculum, course stubs, and the first course's roadmap eagerly. Other courses expand on first open via the expand endpoint.
 - Lesson endpoints call AI skills through the runner with fixture fallback on agent failure.
-- Lesson cache is in-memory (process lifetime), not persistent DB storage.
-- ORM models for users/roadmaps are placeholders and not implemented yet.
+- Lesson cache is persisted in DB through the `lessons` table.
+- Dashboard rollup includes both roadmaps and curriculums with per-card progress.
 
 ### AI Skill Runner Status
 
 Skills implemented in `backend/skills/`:
 
 - `decomposer.py`
+- `curriculum_planner.py`
 - `lesson_generator.py`
 - `socratic_tutor.py`
 

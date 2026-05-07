@@ -16,6 +16,7 @@ DEFAULT_MODEL = "qwen/qwen3-coder:free"
 
 SKILL_MODEL_MAP = {
     "decomposer": "DECOMPOSER_MODEL",
+    "curriculum_planner": "CURRICULUM_PLANNER_MODEL",
     "lesson_generator": "LESSON_GENERATOR_MODEL",
     "socratic_tutor": "SOCRATIC_TUTOR_MODEL",
     "progress_updater": "PROGRESS_UPDATER_MODEL",
@@ -130,6 +131,8 @@ def run_skill(skill_name: str, mode: str = "learn", state: dict = None, **kwargs
     user_content = f"Inputs: {json.dumps(kwargs)}"
     if skill_name == "decomposer":
         user_content = f"Topic: {kwargs.get('topic', 'General Learning Path')}"
+    elif skill_name == "curriculum_planner":
+        user_content = f"Broad topic: {kwargs.get('topic', 'General Learning Path')}"
     elif skill_name == "lesson_generator":
         user_content = f"Module Topic: {kwargs.get('module_topic', 'General Topic')}"
     elif skill_name == "socratic_tutor":

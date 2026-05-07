@@ -6,6 +6,13 @@ import { useAuth } from "@/lib/AuthContext";
 import { getSession } from "@/lib/auth";
 import { useRouter } from "next/navigation";
 import { resetLesson, deleteLesson } from "@/lib/lessons";
+import {
+  confirmCurriculum,
+  createJourney,
+  CurriculumCoursePlan,
+  CurriculumPlan,
+  listCurriculums,
+} from "@/lib/curriculums";
 
 /* ── types ─────────────────────────────────────────── */
 
@@ -26,6 +33,9 @@ interface Journey {
   modules: JourneyModule[];
   createdAt?: string;
   progress?: number;
+  kind?: "roadmap" | "curriculum";
+  courseCount?: number;
+  completedCourses?: number;
 }
 
 /* Normalize the POST /api/roadmaps response into a Journey */
@@ -81,6 +91,8 @@ export default function InsightHub() {
   const [expandedJourney, setExpandedJourney] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [ocrLoading, setOcrLoading] = useState(false);
+  const [pendingPlan, setPendingPlan] = useState<CurriculumPlan | null>(null);
+  const [pendingMode, setPendingMode] = useState<"learn" | "solve">("learn");
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -147,13 +159,43 @@ export default function InsightHub() {
       const headers: HeadersInit = { "Content-Type": "application/json" };
       if (session) headers["Authorization"] = `Bearer ${session.token}`;
 
-      const res = await fetch("/api/roadmaps", { headers });
-      if (!res.ok) throw new Error("Failed to fetch journeys");
-      const data = await res.json();
-      const normalized = (data || []).map((raw: Record<string, unknown>) =>
-        normalizeJourney(raw, (raw.topic as string) || "", (raw.type as "topic" | "problem") || "topic")
+      const [roadmapsRes, curriculums] = await Promise.all([
+        fetch("/api/roadmaps", { headers }),
+        listCurriculums().catch(() => []),
+      ]);
+      if (!roadmapsRes.ok) throw new Error("Failed to fetch journeys");
+      const roadmapsData = await roadmapsRes.json();
+      const normalizedRoadmaps: Journey[] = (roadmapsData || []).map(
+        (raw: Record<string, unknown>) => {
+          const journey = normalizeJourney(
+            raw,
+            (raw.topic as string) || "",
+            (raw.type as "topic" | "problem") || "topic",
+          );
+          journey.kind = "roadmap";
+          return journey;
+        },
       );
-      setJourneys(normalized);
+      const normalizedCurriculums: Journey[] = (curriculums || []).map((c) => ({
+        id: c.curriculum_id,
+        topic: c.topic,
+        type: "topic",
+        modules: [],
+        createdAt: c.created_at,
+        progress: c.progress,
+        kind: "curriculum",
+        courseCount: c.course_count,
+        completedCourses: c.completed_courses,
+      }));
+
+      const combined = [...normalizedRoadmaps, ...normalizedCurriculums].sort(
+        (a, b) => {
+          const ad = new Date(a.createdAt || 0).getTime();
+          const bd = new Date(b.createdAt || 0).getTime();
+          return bd - ad;
+        },
+      );
+      setJourneys(combined);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load journeys");
     } finally {
@@ -161,37 +203,85 @@ export default function InsightHub() {
     }
   }
 
-  async function handleCreateJourney(e: React.FormEvent) {
-    e.preventDefault();
-    if (!inputValue.trim()) return;
+  async function submitTopic(
+    rawTopic: string,
+    type: "topic" | "problem",
+    options: { forceRoadmap?: boolean } = {},
+  ) {
+    const trimmed = rawTopic.trim();
+    if (!trimmed) return;
 
     setIsCreating(true);
     setError("");
     try {
-      const session = getSession();
-      const headers: HeadersInit = { "Content-Type": "application/json" };
-      if (session) headers["Authorization"] = `Bearer ${session.token}`;
-
-      const mode = activeTab === "topic" ? "learn" : "solve";
-      const res = await fetch("/api/roadmaps", {
-        method: "POST",
-        headers,
-        body: JSON.stringify({ topic: inputValue, mode }),
+      const mode = type === "topic" ? "learn" : "solve";
+      const result = await createJourney(trimmed, mode, {
+        forceRoadmap: options.forceRoadmap,
       });
-      if (!res.ok) throw new Error("Failed to create journey");
 
-      const raw = await res.json();
-      const newJourney = normalizeJourney(raw, inputValue, activeTab);
+      if (result.kind === "curriculum_preview") {
+        setPendingPlan(result.plan);
+        setPendingMode(mode);
+        return;
+      }
+
+      const newJourney = normalizeJourney(
+        result.roadmap as unknown as Record<string, unknown>,
+        trimmed,
+        type,
+      );
       setJourneys((prev) => [newJourney, ...prev]);
       setInputValue("");
-      
-      const qs = new URLSearchParams({ topic: newJourney.topic, mode: newJourney.type === "topic" ? "learn" : "solve" });
+
+      const qs = new URLSearchParams({
+        topic: newJourney.topic,
+        mode: newJourney.type === "topic" ? "learn" : "solve",
+      });
       router.push(`/workspace/${newJourney.id}?${qs.toString()}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create journey");
     } finally {
       setIsCreating(false);
     }
+  }
+
+  async function handleCreateJourney(e: React.FormEvent) {
+    e.preventDefault();
+    await submitTopic(inputValue, activeTab);
+  }
+
+  async function handleConfirmCurriculum(courses: CurriculumCoursePlan[]) {
+    if (!pendingPlan) return;
+    setIsCreating(true);
+    setError("");
+    try {
+      const curriculum = await confirmCurriculum(
+        pendingPlan.topic,
+        pendingMode,
+        courses,
+      );
+      setPendingPlan(null);
+      setInputValue("");
+      router.push(`/curriculum/${curriculum.curriculum_id}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create curriculum");
+    } finally {
+      setIsCreating(false);
+    }
+  }
+
+  function handleDismissPlan() {
+    setPendingPlan(null);
+  }
+
+  async function handlePickNarrower(course: CurriculumCoursePlan) {
+    setPendingPlan(null);
+    await submitTopic(course.title, activeTab, { forceRoadmap: true });
+  }
+
+  async function handleEditNarrower(narrowTopic: string) {
+    setPendingPlan(null);
+    await submitTopic(narrowTopic, activeTab, { forceRoadmap: true });
   }
 
   /* group journeys by date for sidebar */
@@ -231,6 +321,16 @@ export default function InsightHub() {
 
   return (
     <ProtectedRoute>
+      {pendingPlan && (
+        <ConfirmCurriculumDialog
+          plan={pendingPlan}
+          isSubmitting={isCreating}
+          onConfirm={handleConfirmCurriculum}
+          onDismiss={handleDismissPlan}
+          onPickNarrower={handlePickNarrower}
+          onEditNarrower={handleEditNarrower}
+        />
+      )}
       <div className="flex min-h-screen bg-[#0b0f1e] font-sans">
         {/* ═══════════ SIDEBAR ═══════════ */}
         <aside
@@ -528,25 +628,49 @@ export default function InsightHub() {
                   {journeys.map((journey) => {
                     const isExpanded = expandedJourney === journey.id;
                     const completedModules = journey.modules.filter(m => m.lesson_status === "completed").length;
-                    const progress = journey.modules.length > 0 ? Math.round((completedModules / journey.modules.length) * 100) : 0;
+                    const progress = journey.kind === "curriculum"
+                      ? journey.progress ?? 0
+                      : (journey.modules.length > 0 ? Math.round((completedModules / journey.modules.length) * 100) : 0);
                     const mode = journey.type === "topic" ? "learn" : "solve";
+                    const isCurriculum = journey.kind === "curriculum";
 
                     return (
-                      <div key={journey.id} className="bg-[#0f1224] rounded-xl border border-gray-700/40 overflow-hidden transition-all hover:border-blue-500/30">
-                        {/* journey header — click to expand */}
+                      <div key={journey.id} className={`bg-[#0f1224] rounded-xl border overflow-hidden transition-all ${isCurriculum ? "border-purple-500/30 hover:border-purple-500/50" : "border-gray-700/40 hover:border-blue-500/30"}`}>
+                        {/* journey header — click to expand or open curriculum */}
                         <button
-                          onClick={() => setExpandedJourney(isExpanded ? null : journey.id)}
+                          onClick={() => {
+                            if (isCurriculum) {
+                              router.push(`/curriculum/${journey.id}`);
+                            } else {
+                              setExpandedJourney(isExpanded ? null : journey.id);
+                            }
+                          }}
                           className="w-full flex items-center justify-between p-5 text-left group"
                         >
                           <div className="flex items-center gap-4 min-w-0">
-                            <div className="w-10 h-10 rounded-xl bg-blue-600/15 flex items-center justify-center flex-shrink-0">
-                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                                <path d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l5.447 2.724A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" stroke="#60a5fa" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                              </svg>
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${isCurriculum ? "bg-purple-500/15" : "bg-blue-600/15"}`}>
+                              {isCurriculum ? (
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                                  <path d="M4 6h16M4 12h16M4 18h10" stroke="#a855f7" strokeWidth="1.5" strokeLinecap="round" />
+                                </svg>
+                              ) : (
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                                  <path d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l5.447 2.724A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" stroke="#60a5fa" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                                </svg>
+                              )}
                             </div>
                             <div className="min-w-0">
-                              <h3 className="text-sm font-semibold text-white group-hover:text-blue-200 transition truncate">{journey.topic}</h3>
-                              <p className="text-xs text-gray-500">{completedModules}/{journey.modules.length} modules • {timeAgo(journey.createdAt)}</p>
+                              <div className="flex items-center gap-2">
+                                <h3 className={`text-sm font-semibold text-white transition truncate ${isCurriculum ? "group-hover:text-purple-200" : "group-hover:text-blue-200"}`}>{journey.topic}</h3>
+                                <span className={`text-[9px] uppercase font-semibold px-1.5 py-0.5 rounded-md flex-shrink-0 ${isCurriculum ? "bg-purple-500/15 text-purple-300" : "bg-blue-500/15 text-blue-300"}`}>
+                                  {isCurriculum ? "Curriculum" : "Path"}
+                                </span>
+                              </div>
+                              <p className="text-xs text-gray-500">
+                                {isCurriculum
+                                  ? `${journey.completedCourses ?? 0}/${journey.courseCount ?? 0} courses • ${timeAgo(journey.createdAt)}`
+                                  : `${completedModules}/${journey.modules.length} modules • ${timeAgo(journey.createdAt)}`}
+                              </p>
                             </div>
                           </div>
                           <div className="flex items-center gap-4 flex-shrink-0">
@@ -734,18 +858,173 @@ function SidebarGroup({
         <button
           key={journey.id}
           onClick={() => {
+            if (journey.kind === "curriculum") {
+              window.location.href = `/curriculum/${journey.id}`;
+              return;
+            }
             const qs = new URLSearchParams({ topic: journey.topic, mode: journey.type === "topic" ? "learn" : "solve" });
             window.location.href = `/workspace/${journey.id}?${qs.toString()}`;
           }}
           className="w-full text-left px-3 py-2 rounded-lg text-xs text-gray-300 hover:bg-[#0f1224] hover:text-white transition flex items-center gap-2 group focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="flex-shrink-0 text-gray-500 group-hover:text-blue-400 transition">
-            <rect x="3" y="4" width="18" height="16" rx="2" stroke="currentColor" strokeWidth="1.5" />
-            <path d="M7 8h10M7 12h6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-          </svg>
-          <span className="truncate">{journey.topic}</span>
+          {journey.kind === "curriculum" ? (
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="flex-shrink-0 text-purple-400 transition">
+              <path d="M4 6h16M4 12h16M4 18h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            </svg>
+          ) : (
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="flex-shrink-0 text-gray-500 group-hover:text-blue-400 transition">
+              <rect x="3" y="4" width="18" height="16" rx="2" stroke="currentColor" strokeWidth="1.5" />
+              <path d="M7 8h10M7 12h6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            </svg>
+          )}
+          <span className="truncate flex-1">{journey.topic}</span>
+          {journey.kind === "curriculum" && (
+            <span className="text-[9px] uppercase font-semibold text-purple-300 bg-purple-500/15 px-1.5 py-0.5 rounded-md">
+              Curr
+            </span>
+          )}
         </button>
       ))}
+    </div>
+  );
+}
+
+/* ── Confirm Curriculum Dialog ─────────────────────── */
+
+function ConfirmCurriculumDialog({
+  plan,
+  isSubmitting,
+  onConfirm,
+  onDismiss,
+  onPickNarrower,
+  onEditNarrower,
+}: {
+  plan: CurriculumPlan;
+  isSubmitting: boolean;
+  onConfirm: (courses: CurriculumCoursePlan[]) => void | Promise<void>;
+  onDismiss: () => void;
+  onPickNarrower: (course: CurriculumCoursePlan) => void | Promise<void>;
+  onEditNarrower: (topic: string) => void | Promise<void>;
+}) {
+  const [view, setView] = useState<"confirm" | "narrower">("confirm");
+  const [customTopic, setCustomTopic] = useState("");
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+      <div className="bg-[#111830] border border-gray-700/50 rounded-2xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <h2 className="text-lg font-bold text-white">
+              {view === "confirm" ? "This topic looks broad" : "Pick a narrower topic"}
+            </h2>
+            <p className="text-xs text-gray-400 mt-1">
+              {view === "confirm"
+                ? `"${plan.topic}" is large enough to deserve its own curriculum. We'd split it into ${plan.courses.length} focused courses.`
+                : "Choose one of these focused sub-topics, or describe your own narrower angle."}
+            </p>
+          </div>
+          <button
+            onClick={onDismiss}
+            disabled={isSubmitting}
+            className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-500 hover:text-gray-200 hover:bg-gray-700/40 transition disabled:opacity-40"
+            aria-label="Close"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+              <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            </svg>
+          </button>
+        </div>
+
+        {view === "confirm" ? (
+          <>
+            <ol className="space-y-2 mb-6">
+              {plan.courses.map((course, i) => (
+                <li
+                  key={course.id}
+                  className="flex items-start gap-3 p-3 bg-[#0d1220] border border-gray-700/30 rounded-xl"
+                >
+                  <span className="w-6 h-6 rounded-full bg-purple-500/15 text-purple-300 text-xs font-bold flex items-center justify-center flex-shrink-0">
+                    {i + 1}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-white">{course.title}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">{course.outcome}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+            <p className="text-[11px] text-gray-500 mb-4">
+              We'll generate the first course immediately so you can start. The rest expand on first open.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <button
+                onClick={() => setView("narrower")}
+                disabled={isSubmitting}
+                className="flex-1 py-2.5 px-4 bg-gray-700/40 hover:bg-gray-700/60 text-gray-200 text-sm font-medium rounded-xl transition disabled:opacity-50"
+              >
+                Pick a narrower topic instead
+              </button>
+              <button
+                onClick={() => onConfirm(plan.courses)}
+                disabled={isSubmitting}
+                className="flex-1 py-2.5 px-4 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-xl transition disabled:opacity-50"
+              >
+                {isSubmitting ? "Creating..." : `Create curriculum (${plan.courses.length} courses)`}
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4">
+              {plan.courses.map((course) => (
+                <button
+                  key={course.id}
+                  onClick={() => onPickNarrower(course)}
+                  disabled={isSubmitting}
+                  className="text-left p-3 bg-[#0d1220] border border-gray-700/30 hover:border-blue-500/40 rounded-xl transition disabled:opacity-50"
+                >
+                  <p className="text-sm font-medium text-white truncate">{course.title}</p>
+                  <p className="text-xs text-gray-500 mt-1 line-clamp-2">{course.outcome}</p>
+                </button>
+              ))}
+            </div>
+            <div className="border-t border-gray-700/40 pt-4">
+              <label className="block text-xs font-medium text-gray-400 mb-2">
+                Or write your own narrower topic
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={customTopic}
+                  onChange={(e) => setCustomTopic(e.target.value)}
+                  placeholder="e.g. Linear regression in Python"
+                  disabled={isSubmitting}
+                  className="flex-1 bg-[#0d1220] border border-gray-700/40 rounded-xl px-3 py-2 text-sm text-white placeholder-gray-600 outline-none focus:border-blue-500/40 disabled:opacity-50"
+                />
+                <button
+                  onClick={() => {
+                    const next = customTopic.trim();
+                    if (next) onEditNarrower(next);
+                  }}
+                  disabled={isSubmitting || !customTopic.trim()}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-gray-700 disabled:text-gray-500 text-white text-sm font-medium rounded-xl transition"
+                >
+                  Use this
+                </button>
+              </div>
+            </div>
+            <div className="mt-4 flex justify-end">
+              <button
+                onClick={() => setView("confirm")}
+                disabled={isSubmitting}
+                className="text-xs text-gray-400 hover:text-gray-200 transition"
+              >
+                Back to curriculum
+              </button>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }

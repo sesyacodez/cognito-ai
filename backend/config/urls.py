@@ -7,11 +7,11 @@ urlpatterns = [
     path("api/auth/", include("apps.auth.urls")),
     path("api/roadmaps", include("apps.roadmaps.urls")),
     path("api/roadmaps/", include("apps.roadmaps.urls")),
+    path("api/curriculums", include("apps.roadmaps.curriculum_urls")),
+    path("api/curriculums/", include("apps.roadmaps.curriculum_urls")),
     path("api/dashboard", include("apps.dashboard.urls")),
     path("api/dashboard/", include("apps.dashboard.urls")),
     path("api/lessons/", include("apps.lessons.urls")),
     path("api/vision", include("apps.vision.urls")),
     path("api/vision/", include("apps.vision.urls")),
-    path("api/dashboard", include("apps.dashboard.urls")),
-    path("api/dashboard/", include("apps.dashboard.urls")),
 ]

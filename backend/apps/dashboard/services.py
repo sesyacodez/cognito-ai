@@ -7,7 +7,9 @@ from django.utils import timezone
 
 from apps.auth.services import resolve_user_from_bearer_token
 from apps.lessons.models import LessonState, QuestionAttempt
-from apps.roadmaps.models import Roadmap
+from apps.roadmaps.curriculum_services import serialize_curriculum
+from apps.roadmaps.models import Curriculum, Roadmap
+from apps.roadmaps.services import _get_module_progress_map
 
 
 def extract_bearer_token(request) -> str | None:
@@ -85,6 +87,11 @@ def build_dashboard_payload(user) -> dict:
         .prefetch_related("modules")
         .order_by("-created_at")
     )
+    curriculums = list(
+        Curriculum.objects.filter(user=user)
+        .prefetch_related("courses__roadmap__modules")
+        .order_by("-created_at")
+    )
     lesson_states = list(
         LessonState.objects.filter(user=user)
         .select_related("lesson", "last_question")
@@ -149,6 +156,7 @@ def build_dashboard_payload(user) -> dict:
 
     summary = {
         "roadmaps_total": len(roadmaps),
+        "curriculums_total": len(curriculums),
         "lessons_total": len(lesson_states),
         "completed_lessons": completed_lessons,
         "in_progress_lessons": in_progress_lessons,
@@ -160,10 +168,16 @@ def build_dashboard_payload(user) -> dict:
         "stars_remaining": total_stars,
     }
 
+    progress_map = _get_module_progress_map(user)
+
     return {
         "summary": summary,
         "streak": _calculate_streak_summary(attempts),
         "roadmaps": [roadmap.to_api_dict() for roadmap in roadmaps],
+        "curriculums": [
+            serialize_curriculum(curriculum, progress_map)
+            for curriculum in curriculums
+        ],
         "lessons": lesson_summaries,
         "recent_activity": [_serialize_attempt(attempt) for attempt in attempts[:5]],
     }

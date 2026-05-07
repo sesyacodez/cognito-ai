@@ -110,7 +110,27 @@ class ApiContractSmokeTests(TestCase):
         response = self.client.get("/api/roadmaps")
         self.assertEqual(response.status_code, 401)
 
-    def test_roadmaps_post_learn_mode_returns_contract_shape(self):
+    def test_roadmaps_post_narrow_learn_topic_returns_roadmap(self):
+        response = self.client.post(
+            "/api/roadmaps",
+            data=json.dumps({"topic": "Database Design", "mode": "learn"}),
+            content_type="application/json",
+            **self.auth_headers,
+        )
+
+        self.assertEqual(response.status_code, 201)
+        payload = response.json()
+        self.assertEqual(payload["kind"], "roadmap")
+        roadmap = payload["roadmap"]
+        self.assertIn("roadmap_id", roadmap)
+        self.assertIn("mode", roadmap)
+        self.assertIn("modules", roadmap)
+        self.assertEqual(roadmap["topic"], "Database Design")
+        self.assertGreaterEqual(len(roadmap["modules"]), 1)
+        for i, module in enumerate(roadmap["modules"]):
+            self.assertEqual(module["index"], i)
+
+    def test_roadmaps_post_broad_topic_returns_curriculum_preview(self):
         response = self.client.post(
             "/api/roadmaps",
             data=json.dumps({"topic": "Machine Learning", "mode": "learn"}),
@@ -118,15 +138,28 @@ class ApiContractSmokeTests(TestCase):
             **self.auth_headers,
         )
 
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["kind"], "curriculum_preview")
+        plan = payload["plan"]
+        self.assertEqual(plan["mode"], "learn")
+        self.assertGreaterEqual(len(plan["courses"]), 2)
+        self.assertLessEqual(len(plan["courses"]), 6)
+
+    def test_roadmaps_post_force_roadmap_bypasses_curriculum_split(self):
+        response = self.client.post(
+            "/api/roadmaps",
+            data=json.dumps(
+                {"topic": "Machine Learning", "mode": "learn", "force_roadmap": True}
+            ),
+            content_type="application/json",
+            **self.auth_headers,
+        )
+
         self.assertEqual(response.status_code, 201)
         payload = response.json()
-        self.assertIn("roadmap_id", payload)
-        self.assertIn("mode", payload)
-        self.assertIn("modules", payload)
-        self.assertEqual(payload["topic"], "Machine Learning")
-        self.assertGreaterEqual(len(payload["modules"]), 1)
-        for i, module in enumerate(payload["modules"]):
-            self.assertEqual(module["index"], i)
+        self.assertEqual(payload["kind"], "roadmap")
+        self.assertGreaterEqual(len(payload["roadmap"]["modules"]), 1)
 
     def test_roadmaps_post_solve_mode_returns_contract_shape(self):
         response = self.client.post(
@@ -138,8 +171,10 @@ class ApiContractSmokeTests(TestCase):
 
         self.assertEqual(response.status_code, 201)
         payload = response.json()
-        self.assertIn(payload["mode"], ["learn", "solve"])
-        self.assertGreaterEqual(len(payload["modules"]), 1)
+        self.assertEqual(payload["kind"], "roadmap")
+        roadmap = payload["roadmap"]
+        self.assertIn(roadmap["mode"], ["learn", "solve"])
+        self.assertGreaterEqual(len(roadmap["modules"]), 1)
 
     def test_roadmaps_post_invalid_json_returns_400(self):
         response = self.client.post(
@@ -159,7 +194,9 @@ class ApiContractSmokeTests(TestCase):
             **self.auth_headers,
         )
         self.assertEqual(response.status_code, 201)
-        self.assertEqual(response.json()["mode"], "learn")
+        payload = response.json()
+        self.assertEqual(payload["kind"], "roadmap")
+        self.assertEqual(payload["roadmap"]["mode"], "learn")
 
     def test_roadmaps_post_persists_and_lists_for_user(self):
         create_response = self.client.post(
@@ -170,7 +207,9 @@ class ApiContractSmokeTests(TestCase):
         )
 
         self.assertEqual(create_response.status_code, 201)
-        roadmap_id = create_response.json()["roadmap_id"]
+        created = create_response.json()
+        self.assertEqual(created["kind"], "roadmap")
+        roadmap_id = created["roadmap"]["roadmap_id"]
 
         list_response = self.client.get("/api/roadmaps", **self.auth_headers)
         self.assertEqual(list_response.status_code, 200)
@@ -192,9 +231,11 @@ class ApiContractSmokeTests(TestCase):
 
         self.assertEqual(response.status_code, 201)
         payload = response.json()
-        self.assertEqual(len(payload["modules"]), 3)
-        self.assertEqual([module["index"] for module in payload["modules"]], [0, 1, 2])
-        self.assertTrue(all("Git Basics" in module["title"] for module in payload["modules"]))
+        self.assertEqual(payload["kind"], "roadmap")
+        roadmap = payload["roadmap"]
+        self.assertEqual(len(roadmap["modules"]), 3)
+        self.assertEqual([module["index"] for module in roadmap["modules"]], [0, 1, 2])
+        self.assertTrue(all("Git Basics" in module["title"] for module in roadmap["modules"]))
 
     def test_roadmap_detail_returns_only_owner_roadmap(self):
         create_response = self.client.post(
@@ -203,7 +244,8 @@ class ApiContractSmokeTests(TestCase):
             content_type="application/json",
             **self.auth_headers,
         )
-        roadmap_id = create_response.json()["roadmap_id"]
+        created = create_response.json()
+        roadmap_id = created["roadmap"]["roadmap_id"]
 
         detail_response = self.client.get(f"/api/roadmaps/{roadmap_id}", **self.auth_headers)
         self.assertEqual(detail_response.status_code, 200)
@@ -413,3 +455,96 @@ class ApiContractSmokeTests(TestCase):
         """POST /api/dashboard should return 405 Method Not Allowed."""
         response = self.client.post("/api/dashboard")
         self.assertEqual(response.status_code, 405)
+
+    # ── Curriculum endpoint smoke tests ───────────────────────────────────────
+
+    def test_curriculum_create_persists_and_eagerly_expands_first_course(self):
+        courses_payload = [
+            {"index": 0, "title": "Linear Algebra", "outcome": "Comfortably manipulate vectors and matrices."},
+            {"index": 1, "title": "Probability", "outcome": "Reason about uncertainty in models."},
+            {"index": 2, "title": "Supervised Learning", "outcome": "Train and evaluate predictive models."},
+        ]
+
+        response = self.client.post(
+            "/api/curriculums",
+            data=json.dumps(
+                {"topic": "Machine Learning", "mode": "learn", "courses": courses_payload}
+            ),
+            content_type="application/json",
+            **self.auth_headers,
+        )
+
+        self.assertEqual(response.status_code, 201)
+        payload = response.json()
+        self.assertIn("curriculum_id", payload)
+        self.assertEqual(payload["topic"], "Machine Learning")
+        self.assertEqual(len(payload["courses"]), 3)
+        self.assertIsNotNone(payload.get("first_course_id"))
+        self.assertIsNotNone(payload.get("first_roadmap"))
+        first_course = payload["courses"][0]
+        self.assertTrue(first_course["expanded"])
+        self.assertEqual(payload["courses"][1]["expanded"], False)
+
+    def test_curriculum_list_returns_user_curriculums(self):
+        self.client.post(
+            "/api/curriculums",
+            data=json.dumps(
+                {
+                    "topic": "Web Development",
+                    "mode": "learn",
+                    "courses": [
+                        {"index": 0, "title": "HTML & CSS", "outcome": "Build static layouts."},
+                        {"index": 1, "title": "JavaScript", "outcome": "Make pages interactive."},
+                    ],
+                }
+            ),
+            content_type="application/json",
+            **self.auth_headers,
+        )
+
+        response = self.client.get("/api/curriculums", **self.auth_headers)
+        self.assertEqual(response.status_code, 200)
+        items = response.json()
+        self.assertGreaterEqual(len(items), 1)
+        self.assertEqual(items[0]["topic"], "Web Development")
+
+    def test_curriculum_expand_is_idempotent(self):
+        create_response = self.client.post(
+            "/api/curriculums",
+            data=json.dumps(
+                {
+                    "topic": "Data Science",
+                    "mode": "learn",
+                    "courses": [
+                        {"index": 0, "title": "Pandas", "outcome": "Wrangle tabular data."},
+                        {"index": 1, "title": "Visualization", "outcome": "Communicate findings."},
+                    ],
+                }
+            ),
+            content_type="application/json",
+            **self.auth_headers,
+        )
+        self.assertEqual(create_response.status_code, 201)
+        created = create_response.json()
+        curriculum_id = created["curriculum_id"]
+        second_course_id = created["courses"][1]["id"]
+
+        first_expand = self.client.post(
+            f"/api/curriculums/{curriculum_id}/courses/{second_course_id}/expand",
+            content_type="application/json",
+            **self.auth_headers,
+        )
+        self.assertEqual(first_expand.status_code, 200)
+        first_roadmap_id = first_expand.json()["roadmap"]["roadmap_id"]
+
+        second_expand = self.client.post(
+            f"/api/curriculums/{curriculum_id}/courses/{second_course_id}/expand",
+            content_type="application/json",
+            **self.auth_headers,
+        )
+        self.assertEqual(second_expand.status_code, 200)
+        self.assertEqual(second_expand.json()["roadmap"]["roadmap_id"], first_roadmap_id)
+
+    def test_curriculum_detail_requires_auth(self):
+        response = self.client.get("/api/curriculums")
+        self.assertEqual(response.status_code, 401)

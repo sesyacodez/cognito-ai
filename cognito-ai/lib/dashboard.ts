@@ -11,8 +11,21 @@ export interface DashboardActivity {
 
 export interface DashboardRoadmap {
   id: string;
+  kind?: "roadmap";
   topic: string;
   mode: string;
+  module_count: number;
+  completed_modules: number;
+  created_at: string;
+}
+
+export interface DashboardCurriculum {
+  id: string;
+  kind: "curriculum";
+  topic: string;
+  mode: string;
+  course_count: number;
+  completed_courses: number;
   module_count: number;
   completed_modules: number;
   created_at: string;
@@ -27,6 +40,7 @@ export interface DashboardData {
   longest_streak: number;
   recent_activity: DashboardActivity[];
   roadmaps: DashboardRoadmap[];
+  curriculums?: DashboardCurriculum[];
   user_name: string;
 }
 

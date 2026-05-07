@@ -40,6 +40,42 @@ class DecomposerOutput(BaseModel):
     roadmap: RoadmapPayload
 
 
+class CurriculumCoursePlan(BaseModel):
+    id: str = Field(min_length=1)
+    title: str = Field(min_length=1)
+    outcome: str = Field(min_length=1)
+    order: int = Field(ge=1)
+
+
+class CurriculumPlanPayload(BaseModel):
+    topic: str = Field(min_length=1)
+    courses: list[CurriculumCoursePlan]
+
+    @model_validator(mode="after")
+    def validate_courses(self):
+        count = len(self.courses)
+        if count < 2 or count > 6:
+            raise ValueError(
+                f"curriculum.courses must contain between 2 and 6 courses, got {count}"
+            )
+
+        orders = [course.order for course in self.courses]
+        if len(set(orders)) != count:
+            raise ValueError("curriculum.courses order values must be unique")
+
+        expected = list(range(1, count + 1))
+        if sorted(orders) != expected:
+            raise ValueError(
+                f"curriculum.courses order values must be sequential from 1, got {sorted(orders)}"
+            )
+
+        return self
+
+
+class CurriculumPlannerOutput(BaseModel):
+    curriculum: CurriculumPlanPayload
+
+
 class LessonQuestion(BaseModel):
     id: str = Field(min_length=1)
     prompt: str = Field(min_length=1)
@@ -100,6 +136,26 @@ def normalize_decomposer_output(data: dict, mode: str = "learn") -> dict:
     }
 
 
+def normalize_curriculum_planner_output(data: dict, mode: str = "learn") -> dict:
+    validated = CurriculumPlannerOutput.model_validate(data)
+    sorted_courses = sorted(validated.curriculum.courses, key=lambda c: c.order)
+
+    return {
+        "curriculum_id": str(uuid4()),
+        "mode": mode,
+        "topic": validated.curriculum.topic,
+        "courses": [
+            {
+                "id": course.id,
+                "title": course.title,
+                "outcome": course.outcome,
+                "index": course.order - 1,
+            }
+            for course in sorted_courses
+        ],
+    }
+
+
 def normalize_lesson_output(data: dict, mode: str = "learn") -> dict:
     validated = LessonOutput.model_validate(data)
     return {
@@ -133,6 +189,10 @@ __all__ = [
     "RoadmapPayload",
     "DecomposerOutput",
     "normalize_decomposer_output",
+    "CurriculumCoursePlan",
+    "CurriculumPlanPayload",
+    "CurriculumPlannerOutput",
+    "normalize_curriculum_planner_output",
     "LessonQuestion",
     "LessonPayload",
     "LessonOutput",

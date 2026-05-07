@@ -96,6 +96,51 @@ def get_adaptive_placeholder_roadmap(topic: str, mode: str = "learn") -> dict:
     }
 
 
+def get_adaptive_placeholder_curriculum(topic: str, mode: str = "learn") -> dict:
+    """
+    Returns a deterministic fallback curriculum plan whose course count
+    adapts to topic breadth. Used when curriculum_planner is unavailable.
+    """
+    topic_clean = topic.strip() or "General Learning Path"
+    mode_clean = "learn"
+    word_count = len(topic_clean.split())
+
+    if word_count <= 2:
+        course_count = 3
+    elif word_count <= 5:
+        course_count = 4
+    else:
+        course_count = 5
+
+    stage_templates = [
+        ("Foundations", "Build the conceptual base needed for the rest of the curriculum."),
+        ("Core Skills", "Develop the central skills and techniques used day-to-day."),
+        ("Intermediate Topics", "Apply the skills to realistic, structured scenarios."),
+        ("Advanced Patterns", "Master advanced patterns and trade-offs in this area."),
+        ("Applied Project", "Bring everything together in an end-to-end project."),
+        ("Specialization", "Pick a focus area and go deeper than the standard track."),
+    ]
+
+    courses = []
+    for index in range(course_count):
+        stage_title, stage_outcome = stage_templates[index]
+        courses.append(
+            {
+                "id": f"placeholder-course-{uuid4().hex[:6]}",
+                "index": index,
+                "title": f"{topic_clean}: {stage_title}",
+                "outcome": stage_outcome,
+            }
+        )
+
+    return {
+        "curriculum_id": f"placeholder-curr-{uuid4().hex[:8]}",
+        "mode": mode_clean,
+        "topic": topic_clean,
+        "courses": courses,
+    }
+
+
 def get_placeholder_lesson(module_topic: str, mode: str = "learn") -> dict:
     """
     Returns a static lesson with micro-theory and 3 questions.

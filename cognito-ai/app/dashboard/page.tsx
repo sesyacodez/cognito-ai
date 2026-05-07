@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useAuth } from "@/lib/AuthContext";
 import { useRouter } from "next/navigation";
-import { fetchDashboard, DashboardData, DashboardActivity, DashboardRoadmap } from "@/lib/dashboard";
+import { fetchDashboard, DashboardData, DashboardActivity, DashboardRoadmap, DashboardCurriculum } from "@/lib/dashboard";
 
 export default function DashboardPage() {
   const { user, logout } = useAuth();
@@ -215,6 +215,53 @@ export default function DashboardPage() {
 
                   </div>
 
+                  {/* CURRICULUMS SECTION */}
+                  {data.curriculums && data.curriculums.length > 0 && (
+                    <div className="mb-8">
+                      <h2 className="text-lg font-bold text-white mb-4">Your Curriculums</h2>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {data.curriculums.map((curr: DashboardCurriculum) => {
+                          const progress = curr.module_count > 0 ? Math.round((curr.completed_modules / curr.module_count) * 100) : 0;
+                          return (
+                            <button
+                              key={curr.id}
+                              onClick={() => router.push(`/curriculum/${curr.id}`)}
+                              className="text-left bg-[#111830] border border-gray-700/50 rounded-2xl p-5 hover:border-purple-500/40 transition shadow-lg group"
+                            >
+                              <div className="flex items-start justify-between mb-3">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-8 h-8 rounded-full bg-purple-500/15 flex items-center justify-center">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                                      <path d="M4 6h16M4 12h16M4 18h10" stroke="#a855f7" strokeWidth="2" strokeLinecap="round" />
+                                    </svg>
+                                  </div>
+                                  <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-300">
+                                    Curriculum
+                                  </span>
+                                </div>
+                                {progress === 100 && (
+                                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                                    <path d="M20 6L9 17l-5-5" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                  </svg>
+                                )}
+                              </div>
+                              <p className="text-sm font-semibold text-white mb-1 group-hover:text-purple-300 transition truncate">{curr.topic}</p>
+                              <p className="text-xs text-gray-500 mb-3">
+                                {curr.completed_courses}/{curr.course_count} courses · {curr.completed_modules}/{curr.module_count} modules
+                              </p>
+                              <div className="w-full h-1.5 bg-gray-700/50 rounded-full overflow-hidden">
+                                <div
+                                  className="h-full bg-gradient-to-r from-purple-500 to-blue-500 rounded-full transition-all duration-700"
+                                  style={{ width: `${progress}%` }}
+                                />
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
                   {/* ROADMAPS SECTION */}
                   {data.roadmaps && data.roadmaps.length > 0 && (
                     <div className="mb-8">
@@ -235,6 +282,9 @@ export default function DashboardPage() {
                                       <path d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l5.447 2.724A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" stroke="#a855f7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                                     </svg>
                                   </div>
+                                  <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-300">
+                                    Path
+                                  </span>
                                   <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${rm.mode === 'solve' ? 'bg-amber-500/10 text-amber-400' : 'bg-blue-500/10 text-blue-400'}`}>
                                     {rm.mode}
                                   </span>
