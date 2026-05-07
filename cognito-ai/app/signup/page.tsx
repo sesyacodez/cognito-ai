@@ -79,12 +79,13 @@ export default function SignUp() {
       {/* card container */}
       <main className="w-full max-w-sm rounded-2xl bg-[#0f1224] bg-opacity-90 p-8 shadow-2xl">
         <h1 className="text-center text-3xl font-bold text-white pb-5">
-          Реєстрація
+          COGNITO.AI
         </h1>
         <p className="mt-2 text-center text-sm text-gray-300">
-          Швидко створіть обліковий запис і почніть навчання
-          <br />
-          <span className="text-xs text-gray-400">Увійдіть через Google або email</span>
+          Create your account<br />
+          <span className="text-xs text-gray-400">
+            An AI mentor that actually teaches.
+          </span>
         </p>
 
         <div className="mt-6 space-y-3">
@@ -123,7 +124,7 @@ export default function SignUp() {
                 111l81 64.3c19.7-58.6 74.5-102.2 139.1-102.2z"
               />
             </svg>
-            {isLoading ? "Створення облікового запису..." : "Продовжити через Google"}
+            {isLoading ? "Creating account..." : "Continue with Google"}
           </button>
 
           {/* registration form */}
@@ -186,7 +187,7 @@ export default function SignUp() {
               disabled={isLoading}
               className="w-full px-4 py-2 bg-white text-black rounded-md hover:bg-gray-100 transition cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              {isLoading ? "Створення…" : "Створити обліковий запис"}
+              {isLoading ? "Creating…" : "Create Account"}
             </button>
           </form>
         </div>

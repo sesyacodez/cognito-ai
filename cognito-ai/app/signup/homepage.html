@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Homepage</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            align-items: center;
+            justify-content: center;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            padding: 30px;
+            background-color: linear-gradient(to right, #f0f0f0, #e0e0e0);
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            justify-content: center;
+        }
+        p {
+            font-size: 18px;
+            text-align: center;
+        }
+        #profileStatus {
+            font-size: 14px;
+            color: #666;
+            margin-top: 6px;
+            margin-bottom: 2px;
+        }
+        #logoutButton {
+            padding: 10px 20px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        #logoutButton:hover {
+            background-color: #0056b3;
+        }
+        #deleteAccountButton {
+            padding: 10px 20px;
+            background-color: white;
+            color: #dc3545;
+            border: 1px solid #dc3545;
+            border-radius: 5px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            display: block;
+            margin-top: 20px;
+        }
+        #deleteAccountButton:hover {
+            background-color: #fff5f5;
+        }
+        button, div {
+            margin-top: 20px;
+            font-size: 20px;
+            padding: 10px;
+        }
+        div {
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 15px;
+            width: 25%;
+            color: rgb(12, 11, 11);
+            font-weight: 400;
+        }
+        span {
+            font-weight: 400;
+            font-size: 16px;
+            color: #000;
+            margin-left: 8px;
+            align-items: center;
+        }
+    </style>
+    <script type="module" src="./homepage.js"></script>
+
+</head>
+<body>
+    <h1>Homepage</h1>
+    <p>Welcome to the homepage!</p>
+    <p id="profileStatus">Loading profile...</p>
+    <div>Username: <span id="loggedInUsername"></span></div>
+    <div>Email: <span id="loggedInEmail"></span></div>
+    <button id="logoutButton">Logout</button>
+    <button id="deleteAccountButton">Delete account</button>
+</body>
+</html>

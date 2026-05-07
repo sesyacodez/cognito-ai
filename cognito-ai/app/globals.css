@@ -75,14 +75,3 @@ html {
 .scrollbar-thin::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.2);
 }
-
-/* Focus-visible styles for keyboard users */
-:focus {
-  outline: none;
-}
-
-:focus-visible {
-  outline: 3px solid rgba(59,130,246,0.8); /* blue-500 */
-  outline-offset: 2px;
-  border-radius: 6px;
-}
