@@ -10,7 +10,7 @@ import {
   updateProfile,
   User as FirebaseUser,
 } from "firebase/auth";
-import { auth, googleProvider } from "@/lib/firebase";
+import { getFirebaseAuth, getGoogleProvider } from "@/lib/firebase";
 import { AuthUser, setSession, clearSession } from "@/lib/auth";
 
 interface AuthContextType {
@@ -86,7 +86,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const initialized = useRef(false);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+    const a = getFirebaseAuth();
+    if (!a) {
+      // No auth available during SSR/prerender — mark as not-loading and exit safely
+      if (!initialized.current) {
+        initialized.current = true;
+        setIsLoading(false);
+      }
+      return;
+    }
+    const unsubscribe = onAuthStateChanged(a, async (firebaseUser) => {
       if (firebaseUser) {
         const backendUser = await syncWithBackend(firebaseUser);
         setUser(backendUser);
@@ -105,7 +114,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (email: string, password: string) => {
     setIsLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      const a = getFirebaseAuth();
+      if (!a) throw new Error("Firebase auth not available");
+      await signInWithEmailAndPassword(a, email, password);
       // onAuthStateChanged will update user state
     } catch (err) {
       throw mapFirebaseError(err);
@@ -117,7 +128,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const loginWithGoogle = async () => {
     setIsLoading(true);
     try {
-      await signInWithPopup(auth, googleProvider);
+      const a = getFirebaseAuth();
+      const gp = getGoogleProvider();
+      if (!a || !gp) throw new Error("Firebase auth or provider not available");
+      await signInWithPopup(a, gp);
     } catch (err) {
       throw mapFirebaseError(err);
     } finally {
@@ -128,7 +142,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const register = async (name: string, email: string, password: string) => {
     setIsLoading(true);
     try {
-      const { user: fbUser } = await createUserWithEmailAndPassword(auth, email, password);
+      const a = getFirebaseAuth();
+      if (!a) throw new Error("Firebase auth not available");
+      const { user: fbUser } = await createUserWithEmailAndPassword(a, email, password);
       await updateProfile(fbUser, { displayName: name });
       const backendUser = await syncWithBackend(fbUser);
       backendUser.name = name;
@@ -141,7 +157,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = async () => {
-    await signOut(auth);
+    const a = getFirebaseAuth();
+    if (!a) return;
+    await signOut(a);
   };
 
   return (

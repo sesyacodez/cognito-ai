@@ -96,6 +96,8 @@ export default function DashboardPage() {
                 onClick={() => setSidebarOpen((o: boolean) => !o)}
                 className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-white hover:bg-gray-700/30 transition focus:outline-none focus:ring-2 focus:ring-blue-500"
                 aria-label={sidebarOpen ? "Close sidebar" : "Open sidebar"}
+                aria-pressed={sidebarOpen}
+                aria-controls="main-sidebar"
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                   <path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
@@ -127,12 +129,14 @@ export default function DashboardPage() {
                 aria-expanded={showDropdown}
                 aria-haspopup="true"
                 aria-label="User menu"
+                aria-controls="user-menu"
+                aria-pressed={showDropdown}
               >
                 {user?.name?.charAt(0)?.toUpperCase() || "U"}
               </button>
 
               {showDropdown && (
-                <div className="absolute right-0 mt-2 w-48 bg-[#0f1224] rounded-lg shadow-xl border border-gray-700/50 py-1 z-50">
+                <div id="user-menu" className="absolute right-0 mt-2 w-48 bg-[#0f1224] rounded-lg shadow-xl border border-gray-700/50 py-1 z-50" role="menu" aria-label="User menu">
                   <div className="px-4 py-2 border-b border-gray-700/50">
                     <p className="text-sm font-medium text-white truncate">{user?.name}</p>
                     <p className="text-xs text-gray-400 truncate">{user?.email}</p>
@@ -227,6 +231,8 @@ export default function DashboardPage() {
                               key={rm.id}
                               onClick={() => router.push("/insight-hub")}
                               className="text-left bg-[#111830] border border-gray-700/50 rounded-2xl p-5 hover:border-purple-500/40 transition shadow-lg group"
+                              role="button"
+                              aria-label={`Open roadmap ${rm.topic}`}
                             >
                               <div className="flex items-start justify-between mb-3">
                                 <div className="flex items-center gap-2">
@@ -283,6 +289,8 @@ export default function DashboardPage() {
                                 router.push(`/workspace/${act.lesson_id}?${qs.toString()}`);
                               }}
                               className="w-full flex items-center justify-between p-4 bg-[#0d1222] rounded-xl border border-gray-700/30 hover:border-cyan-500/30 transition cursor-pointer group text-left"
+                              role="listitem"
+                              aria-label={`Open lesson ${act.lesson_title || act.lesson_id}`}
                             >
                               <div className="flex items-center gap-4">
                                 <div className={`w-10 h-10 rounded-full flex items-center justify-center ${act.status === 'completed' ? 'bg-emerald-500/10' : 'bg-blue-500/10'}`}>
@@ -325,6 +333,11 @@ export default function DashboardPage() {
                     {/* OVERVIEW / PROGRESS SUMMARY */}
                     <div className="bg-[#111830] border border-gray-700/50 rounded-2xl p-6 shadow-lg">
                        <h2 className="text-lg font-bold text-white mb-4">Progress Summary</h2>
+                       {/* aria-live region for assistive tech to announce progress changes */}
+                       <div aria-live="polite" aria-atomic="true" className="sr-only">
+                         <p>XP: {data.total_xp}</p>
+                         <p>Current streak: {data.current_streak} days</p>
+                       </div>
                        
                        <div className="space-y-6">
                          <div>

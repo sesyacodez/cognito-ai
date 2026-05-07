@@ -1,18 +1,25 @@
 "use client";
 
-import React, { useState } from "react";
+import Link from "next/link";
+import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/AuthContext";
 
 export default function SignUp() {
   const router = useRouter();
-  const { register, loginWithGoogle, isLoading } = useAuth();
+  const { register, loginWithGoogle, isLoading, isAuthenticated } = useAuth();
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [errors, setErrors] = useState<{ name?: string; email?: string; password?: string; confirmPassword?: string; general?: string }>({});
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      router.replace("/dashboard");
+    }
+  }, [isAuthenticated, router]);
 
   function validate() {
     const e: typeof errors = {};
@@ -38,7 +45,6 @@ export default function SignUp() {
 
     try {
       await register(name, email, password);
-      router.push("/insight-hub");
     } catch (err) {
       setErrors({
         general: err instanceof Error ? err.message : "Registration failed. Please try again.",
@@ -50,7 +56,6 @@ export default function SignUp() {
     setErrors({});
     try {
       await loginWithGoogle();
-      router.push("/insight-hub");
     } catch (err) {
       setErrors({
         general:
@@ -59,18 +64,27 @@ export default function SignUp() {
     }
   }
 
+  if (isLoading || isAuthenticated) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#0b0f1e]">
+        <div className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/75">
+          {isAuthenticated ? "Redirecting to dashboard..." : "Loading Cognito.AI..."}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#0b0f1e] font-sans">
       {/* card container */}
       <main className="w-full max-w-sm rounded-2xl bg-[#0f1224] bg-opacity-90 p-8 shadow-2xl">
         <h1 className="text-center text-3xl font-bold text-white pb-5">
-          COGNITO.AI
+          Реєстрація
         </h1>
         <p className="mt-2 text-center text-sm text-gray-300">
-          Create your account<br />
-          <span className="text-xs text-gray-400">
-            An AI mentor that actually teaches.
-          </span>
+          Швидко створіть обліковий запис і почніть навчання
+          <br />
+          <span className="text-xs text-gray-400">Увійдіть через Google або email</span>
         </p>
 
         <div className="mt-6 space-y-3">
@@ -109,7 +123,7 @@ export default function SignUp() {
                 111l81 64.3c19.7-58.6 74.5-102.2 139.1-102.2z"
               />
             </svg>
-            {isLoading ? "Creating account..." : "Continue with Google"}
+            {isLoading ? "Створення облікового запису..." : "Продовжити через Google"}
           </button>
 
           {/* registration form */}
@@ -172,7 +186,7 @@ export default function SignUp() {
               disabled={isLoading}
               className="w-full px-4 py-2 bg-white text-black rounded-md hover:bg-gray-100 transition cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              {isLoading ? "Creating…" : "Create Account"}
+              {isLoading ? "Створення…" : "Створити обліковий запис"}
             </button>
           </form>
         </div>
@@ -189,9 +203,9 @@ export default function SignUp() {
         </p>
         <p className="mt-4 text-xs text-center text-gray-400">
           Already have an account?{' '}
-          <a href="/" className="underline">
+          <Link href="/signin" className="underline">
             Sign in
-          </a>
+          </Link>
         </p>
       </main>
     </div>
