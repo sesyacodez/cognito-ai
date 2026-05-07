@@ -3,6 +3,7 @@
 .env.*
 !.env.example
 !.env.template
+.venv/
 
 # IDEs and OS
 .vscode/

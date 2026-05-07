@@ -1,6 +1,8 @@
 from uuid import uuid4
 from pydantic import BaseModel, Field, ValidationError, model_validator
 
+from utils.roadmap_complexity import trim_modules_to_estimated_count
+
 
 class DecomposerModule(BaseModel):
     id: str = Field(min_length=1)
@@ -77,11 +79,8 @@ class ProgressUpdate(BaseModel):
 def normalize_decomposer_output(data: dict, mode: str = "learn") -> dict:
     validated = DecomposerOutput.model_validate(data)
     sorted_modules = sorted(validated.roadmap.modules, key=lambda m: m.order)
-
-    return {
-        "roadmap_id": str(uuid4()),
-        "mode": mode,
-        "modules": [
+    selected_modules = trim_modules_to_estimated_count(
+        [
             {
                 "id": module.id,
                 "title": module.title,
@@ -90,6 +89,14 @@ def normalize_decomposer_output(data: dict, mode: str = "learn") -> dict:
             }
             for module in sorted_modules
         ],
+        validated.roadmap.topic,
+        mode=mode,
+    )
+
+    return {
+        "roadmap_id": str(uuid4()),
+        "mode": mode,
+        "modules": selected_modules,
     }
 
 

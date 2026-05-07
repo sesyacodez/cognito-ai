@@ -67,7 +67,7 @@
 - Minimal auth + session flow working in dev (Google + email/password).
 - Insight Hub (Library) page and data flow (basic layout).
 - Roadmap creation and retrieval endpoints with per-user auth.
-- End-to-end flow works with a placeholder 5-module response.
+- End-to-end flow works with an adaptive placeholder response.
 
 ### Designer
 
@@ -102,7 +102,7 @@
 - Wire temporary auth stubs (POST /api/auth/register, /api/auth/login, /api/auth/firebase-login) so frontend auth integration can proceed while backend implementation is pending.
 - Define initial user schema fields (email, name, uid) - already complete in docs/data-schema.md.
 - Define the roadmap module output shape and field validation rules (backend/utils/validators.py with Pydantic models). Includes order->index normalizer.
-- Provide a temporary fixed 5-module response for dev (backend/utils/fixtures.py).
+- Provide an adaptive placeholder response for dev (backend/utils/fixtures.py).
 - Wire stub endpoints (GET and POST /api/roadmaps) so frontend dev can integrate without waiting for backend dev. Add CORS for Next.js dev server.
 - Add unit tests for Firebase helper, validators, and fixtures.
 - Add backend API contract smoke tests for auth and roadmap stub flows.
@@ -147,7 +147,7 @@
 
 - Create `backend/skills/` directory with one skill per file (spec + implementation).
 - Implement `backend/skills/decomposer.py` — Decomposer skill, two modes:
-  - **`learn`** mode: 3–7 modules with learning outcomes.
+  - **`learn`** mode: 1–7 modules with learning outcomes sized to topic breadth.
   - **`solve`** mode: 1–5 modules with concrete deliverables (1 module if problem is simple).
 - Implement `backend/agent/runner.py` — agent runner that loads skill specs and calls OpenRouter (Gemini `nvidia/nemotron-3-nano-30b-a3b:free`) with them as tools; validates output; retries once on failure; raises `AgentError` on repeated failure.
 - Wire Decomposer to `POST /api/roadmaps`: call `runner.run_skill("decomposer", topic, mode=mode)`; graceful fixture fallback on `AgentError`.

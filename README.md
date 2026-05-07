@@ -56,7 +56,7 @@ Current backend behavior:
 
 - Auth endpoints use stub/in-memory storage helpers for local workflow.
 - `GET /api/roadmaps` returns an empty list placeholder.
-- `POST /api/roadmaps` currently returns fixture-based 5-module output.
+- `POST /api/roadmaps` creates a persisted roadmap with an adaptive module count based on topic breadth.
 - Lesson endpoints call AI skills through the runner with fixture fallback on agent failure.
 - Lesson cache is in-memory (process lifetime), not persistent DB storage.
 - ORM models for users/roadmaps are placeholders and not implemented yet.

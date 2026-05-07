@@ -1,6 +1,7 @@
 import unittest
 
-from utils.fixtures import get_placeholder_roadmap
+from utils.fixtures import get_adaptive_placeholder_roadmap, get_placeholder_roadmap
+from utils.roadmap_complexity import estimate_module_count
 
 
 class FixtureTests(unittest.TestCase):
@@ -33,6 +34,16 @@ class FixtureTests(unittest.TestCase):
         response = get_placeholder_roadmap("Python Basics")
         for module in response["modules"]:
             self.assertIn("Python Basics", module["title"])
+
+    def test_adaptive_placeholder_uses_one_module_for_atomic_python_method(self):
+        response = get_adaptive_placeholder_roadmap("split str method in python")
+        self.assertEqual(len(response["modules"]), 1)
+
+    def test_estimate_module_count_keeps_atomic_python_method_short(self):
+        self.assertEqual(estimate_module_count("split str method in python"), 1)
+
+    def test_estimate_module_count_allows_broad_topics_to_expand(self):
+        self.assertEqual(estimate_module_count("complete machine learning roadmap"), 6)
 
 
 if __name__ == "__main__":

@@ -1,5 +1,7 @@
 from uuid import uuid4
 
+from utils.roadmap_complexity import estimate_module_count
+
 
 def get_placeholder_roadmap(topic: str) -> dict:
     """
@@ -54,14 +56,8 @@ def get_adaptive_placeholder_roadmap(topic: str, mode: str = "learn") -> dict:
     topic_clean = topic.strip() or "General Learning Path"
     mode_clean = "solve" if str(mode).strip().lower() == "solve" else "learn"
 
-    word_count = len(topic_clean.split())
     if mode_clean == "solve":
-        if word_count <= 4:
-            module_count = 1
-        elif word_count <= 10:
-            module_count = 3
-        else:
-            module_count = 5
+        module_count = estimate_module_count(topic_clean, mode=mode_clean)
         stage_templates = [
             ("Problem Framing", "Clarify the scope, constraints, and desired outcome."),
             ("Implementation Plan", "Break the solution into concrete executable steps."),
@@ -70,16 +66,7 @@ def get_adaptive_placeholder_roadmap(topic: str, mode: str = "learn") -> dict:
             ("Delivery", "Package and document the final solution for use."),
         ]
     else:
-        if word_count <= 3:
-            module_count = 3
-        elif word_count <= 7:
-            module_count = 4
-        elif word_count <= 12:
-            module_count = 5
-        elif word_count <= 18:
-            module_count = 6
-        else:
-            module_count = 7
+        module_count = estimate_module_count(topic_clean, mode=mode_clean)
         stage_templates = [
             ("Foundations", "Learn the basics and fundamental concepts."),
             ("Core Concepts", "Explore the essential principles and theories."),

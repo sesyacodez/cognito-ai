@@ -87,7 +87,7 @@ python manage.py runserver 0.0.0.0:8000
 }
 ```
 
-If `OPENROUTER_API_KEY` is not set, the endpoint returns a pre-built 5-module fixture — no errors.
+If `OPENROUTER_API_KEY` is not set, the endpoint returns an adaptive placeholder roadmap — no errors.
 
 Roadmaps are stored in the `roadmaps` and `modules` tables and returned in owner-scoped lists.
 

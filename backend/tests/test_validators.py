@@ -109,6 +109,17 @@ class NormalizeDecomposerOutputTests(unittest.TestCase):
         self.assertEqual([m["index"] for m in result["modules"]], [0, 1, 2])
         self.assertEqual([m["title"] for m in result["modules"]], ["A", "B", "C"])
 
+    def test_atomic_method_topic_is_trimmed_to_one_module(self):
+        payload = {
+            "roadmap": {
+                "topic": "split str method in python",
+                "modules": _make_modules(5),
+            }
+        }
+        result = normalize_decomposer_output(payload, mode="learn")
+        self.assertEqual(len(result["modules"]), 1)
+        self.assertEqual(result["modules"][0]["index"], 0)
+
 
 if __name__ == "__main__":
     unittest.main()

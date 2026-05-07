@@ -1,11 +1,11 @@
 ---
 name: Decomposer
-description: Generate a 5-module learning roadmap from a topic. Use this whenever the user wants a learning plan, course outline, curriculum, or module breakdown for a topic, even if they do not say "roadmap" explicitly.
+description: Generate a learning roadmap with a variable number of modules based on topic breadth. Use this whenever the user wants a learning plan, course outline, curriculum, or module breakdown for a topic, even if they do not say "roadmap" explicitly.
 ---
 
 # Decomposer
 
-Create a 5-module learning roadmap from a single topic.
+Create a learning roadmap from a single topic with module count based on complexity.
 
 ## When to use
 Use this skill whenever the task is to break a topic into modules, outline a learning path, or propose a structured sequence of lessons.
@@ -34,13 +34,16 @@ Schema:
 ```
 
 ## Constraints
-- Output exactly 5 modules.
+- In `learn` mode, output 1-7 modules depending on topic breadth.
+- Use 1 module for a single method, function, syntax feature, API call, or atomic concept, such as Python `str.split`.
+- Use 2-3 modules for narrow topics, 4-5 for broad topics, and 6-7 only for comprehensive domains or full curricula.
+- In `solve` mode, output 1 module for simple tasks and 2-5 for complex tasks.
 - Each `outcome` is a short, single-sentence learning outcome.
-- `order` must be 1 through 5.
+- `order` must be sequential starting at 1.
 
 ## Procedure
 1. Read the topic.
-2. Propose a logical 5-step learning progression from fundamentals to applied work.
+2. Assess breadth and propose the smallest useful learning progression.
 3. Write a clear title and one outcome per module.
 4. Emit JSON only.
 

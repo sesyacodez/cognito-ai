@@ -27,13 +27,13 @@ Cognito.ai is an adaptive, metacognitive learning platform that prevents "AI-dep
 ### Success Criteria (MVP)
 
 - Users can authenticate via Google or email/password and access personalized roadmaps.
-- Each topic is decomposed into 5 modules with interactive lessons.
+- Each topic is decomposed into an adaptive number of modules with interactive lessons.
 - Progress (XP, stars, lesson state) is saved and restored accurately.
 
 ## 4. Core Features (MVP)
 
 - Dual Authentication: Secure login via Firebase Auth (Google OAuth) and Django email/password, integrated with the Django backend for session management.
-- Smart Topic Decomposition: A "Decomposer" agent skill that analyzes broad topics and generates a 5-module learning roadmap.
+- Smart Topic Decomposition: A "Decomposer" agent skill that analyzes topic breadth and generates an appropriately sized learning roadmap.
 - Socratic Learning Nodes: Interactive lesson modules consisting of brief theory, 3-tier difficulty questions, and a tiered hint system.
 - Personal Insight Hub (Library): A dashboard where users can view their generated roadmaps, track progress, and resume saved lessons.
 - Progress Persistence: Saving user performance data (stars, XP, and lesson states) to a relational database.

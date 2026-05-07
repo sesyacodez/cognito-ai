@@ -39,7 +39,9 @@ Schema:
 
 ## Constraints
 
-- In `learn` mode, output 3-7 modules depending on topic breadth.
+- In `learn` mode, output 1-7 modules depending on topic breadth.
+- Use 1 module for a single method, function, syntax feature, API call, or atomic concept, such as Python `str.split`.
+- Use 2-3 modules for narrow topics, 4-5 for broad topics, and 6-7 only for comprehensive domains or full curricula.
 - In `solve` mode, output 1 module for simple tasks and 2-5 for complex tasks.
 - Each `outcome` is a short, single-sentence learning outcome or concrete deliverable.
 - `order` must be sequential starting at 1.
