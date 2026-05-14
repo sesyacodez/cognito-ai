@@ -88,3 +88,11 @@ class SerializeCurriculumTests(TestCase):
         for course in data["courses"]:
             self.assertIn("status", course)
             self.assertIn("expanded", course)
+            self.assertIn("modules", course)
+            if course["expanded"]:
+                self.assertIsInstance(course["modules"], list)
+                self.assertGreater(len(course["modules"]), 0)
+                self.assertIn("title", course["modules"][0])
+                self.assertIn("index", course["modules"][0])
+            else:
+                self.assertEqual(course["modules"], [])

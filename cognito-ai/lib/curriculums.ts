@@ -49,6 +49,8 @@ export interface CurriculumCourse extends CurriculumCoursePlan {
   completed_modules?: number;
   in_progress_modules?: number;
   progress?: number;
+  /** Populated when the course is expanded (roadmap exists). */
+  modules?: RoadmapModuleSummary[];
 }
 
 export interface CurriculumPlan {

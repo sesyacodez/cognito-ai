@@ -202,6 +202,12 @@ def serialize_curriculum(curriculum: Curriculum, module_progress: dict | None = 
     for course, course_data in zip(curriculum.courses.all(), data["courses"]):
         rollup = _summarize_course_progress(course, progress_map)
         course_data.update(rollup)
+        if course.roadmap_id is not None:
+            course_data["modules"] = serialize_roadmap(course.roadmap, progress_map)[
+                "modules"
+            ]
+        else:
+            course_data["modules"] = []
         total_modules += rollup["module_count"]
         total_completed += rollup["completed_modules"]
         if rollup["module_count"] == 0:

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import React, { useEffect, useState } from "react";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useAuth } from "@/lib/AuthContext";
@@ -223,10 +224,10 @@ export default function DashboardPage() {
                         {data.curriculums.map((curr: DashboardCurriculum) => {
                           const progress = curr.module_count > 0 ? Math.round((curr.completed_modules / curr.module_count) * 100) : 0;
                           return (
-                            <button
+                            <Link
                               key={curr.id}
-                              onClick={() => router.push(`/curriculum/${curr.id}`)}
-                              className="text-left bg-[#111830] border border-gray-700/50 rounded-2xl p-5 hover:border-purple-500/40 transition shadow-lg group"
+                              href={`/curriculum/${curr.id}`}
+                              className="text-left bg-[#111830] border border-gray-700/50 rounded-2xl p-5 hover:border-purple-500/40 transition shadow-lg group block focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0b0f1e]"
                             >
                               <div className="flex items-start justify-between mb-3">
                                 <div className="flex items-center gap-2">
@@ -255,7 +256,7 @@ export default function DashboardPage() {
                                   style={{ width: `${progress}%` }}
                                 />
                               </div>
-                            </button>
+                            </Link>
                           );
                         })}
                       </div>
@@ -270,10 +271,10 @@ export default function DashboardPage() {
                         {data.roadmaps.map((rm: DashboardRoadmap) => {
                           const progress = rm.module_count > 0 ? Math.round((rm.completed_modules / rm.module_count) * 100) : 0;
                           return (
-                            <button
+                            <Link
                               key={rm.id}
-                              onClick={() => router.push("/insight-hub")}
-                              className="text-left bg-[#111830] border border-gray-700/50 rounded-2xl p-5 hover:border-purple-500/40 transition shadow-lg group"
+                              href="/insight-hub"
+                              className="text-left bg-[#111830] border border-gray-700/50 rounded-2xl p-5 hover:border-purple-500/40 transition shadow-lg group block focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0b0f1e]"
                             >
                               <div className="flex items-start justify-between mb-3">
                                 <div className="flex items-center gap-2">
@@ -303,7 +304,7 @@ export default function DashboardPage() {
                                   style={{ width: `${progress}%` }}
                                 />
                               </div>
-                            </button>
+                            </Link>
                           );
                         })}
                       </div>
@@ -326,13 +327,10 @@ export default function DashboardPage() {
                       ) : (
                         <div className="space-y-3">
                           {data.recent_activity.map((act: DashboardActivity, i: number) => (
-                            <button
+                            <Link
                               key={i}
-                              onClick={() => {
-                                const qs = new URLSearchParams({ topic: act.lesson_title || act.lesson_id, mode: "learn" });
-                                router.push(`/workspace/${act.lesson_id}?${qs.toString()}`);
-                              }}
-                              className="w-full flex items-center justify-between p-4 bg-[#0d1222] rounded-xl border border-gray-700/30 hover:border-cyan-500/30 transition cursor-pointer group text-left"
+                              href={`/workspace/${act.lesson_id}?${new URLSearchParams({ topic: act.lesson_title || act.lesson_id, mode: "learn" }).toString()}`}
+                              className="w-full flex items-center justify-between p-4 bg-[#0d1222] rounded-xl border border-gray-700/30 hover:border-cyan-500/30 transition cursor-pointer group text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0b0f1e]"
                             >
                               <div className="flex items-center gap-4">
                                 <div className={`w-10 h-10 rounded-full flex items-center justify-center ${act.status === 'completed' ? 'bg-emerald-500/10' : 'bg-blue-500/10'}`}>
@@ -366,7 +364,7 @@ export default function DashboardPage() {
                                   <path d="M9 18l6-6-6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                                 </svg>
                               </div>
-                            </button>
+                            </Link>
                           ))}
                         </div>
                       )}

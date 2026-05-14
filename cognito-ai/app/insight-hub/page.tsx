@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useAuth } from "@/lib/AuthContext";
@@ -636,55 +637,78 @@ export default function InsightHub() {
 
                     return (
                       <div key={journey.id} className={`bg-[#0f1224] rounded-xl border overflow-hidden transition-all ${isCurriculum ? "border-purple-500/30 hover:border-purple-500/50" : "border-gray-700/40 hover:border-blue-500/30"}`}>
-                        {/* journey header — click to expand or open curriculum */}
-                        <button
-                          onClick={() => {
-                            if (isCurriculum) {
-                              router.push(`/curriculum/${journey.id}`);
-                            } else {
-                              setExpandedJourney(isExpanded ? null : journey.id);
-                            }
-                          }}
-                          className="w-full flex items-center justify-between p-5 text-left group"
-                        >
-                          <div className="flex items-center gap-4 min-w-0">
-                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${isCurriculum ? "bg-purple-500/15" : "bg-blue-600/15"}`}>
-                              {isCurriculum ? (
+                        {isCurriculum ? (
+                          <Link
+                            href={`/curriculum/${journey.id}`}
+                            className="w-full flex items-center justify-between p-5 text-left group focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-purple-500"
+                          >
+                            <div className="flex items-center gap-4 min-w-0">
+                              <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 bg-purple-500/15">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
                                   <path d="M4 6h16M4 12h16M4 18h10" stroke="#a855f7" strokeWidth="1.5" strokeLinecap="round" />
                                 </svg>
-                              ) : (
+                              </div>
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <h3 className="text-sm font-semibold text-white transition truncate group-hover:text-purple-200">{journey.topic}</h3>
+                                  <span className="text-[9px] uppercase font-semibold px-1.5 py-0.5 rounded-md flex-shrink-0 bg-purple-500/15 text-purple-300">
+                                    Curriculum
+                                  </span>
+                                </div>
+                                <p className="text-xs text-gray-500">
+                                  {`${journey.completedCourses ?? 0}/${journey.courseCount ?? 0} courses • ${timeAgo(journey.createdAt)}`}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-4 flex-shrink-0">
+                              <div className="flex items-center gap-2">
+                                <div className="w-20 h-1.5 bg-gray-700 rounded-full overflow-hidden">
+                                  <div className="h-full bg-blue-500 rounded-full transition-all duration-500" style={{ width: `${progress}%` }} />
+                                </div>
+                                <span className="text-xs text-gray-400 w-8 text-right">{progress}%</span>
+                              </div>
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="text-gray-500" aria-hidden="true">
+                                <path d="M9 18l6-6-6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                              </svg>
+                            </div>
+                          </Link>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setExpandedJourney(isExpanded ? null : journey.id)}
+                            className="w-full flex items-center justify-between p-5 text-left group focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500"
+                          >
+                            <div className="flex items-center gap-4 min-w-0">
+                              <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 bg-blue-600/15">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
                                   <path d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l5.447 2.724A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" stroke="#60a5fa" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                                 </svg>
-                              )}
+                              </div>
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <h3 className="text-sm font-semibold text-white transition truncate group-hover:text-blue-200">{journey.topic}</h3>
+                                  <span className="text-[9px] uppercase font-semibold px-1.5 py-0.5 rounded-md flex-shrink-0 bg-blue-500/15 text-blue-300">
+                                    Path
+                                  </span>
+                                </div>
+                                <p className="text-xs text-gray-500">
+                                  {`${completedModules}/${journey.modules.length} modules • ${timeAgo(journey.createdAt)}`}
+                                </p>
+                              </div>
                             </div>
-                            <div className="min-w-0">
+                            <div className="flex items-center gap-4 flex-shrink-0">
                               <div className="flex items-center gap-2">
-                                <h3 className={`text-sm font-semibold text-white transition truncate ${isCurriculum ? "group-hover:text-purple-200" : "group-hover:text-blue-200"}`}>{journey.topic}</h3>
-                                <span className={`text-[9px] uppercase font-semibold px-1.5 py-0.5 rounded-md flex-shrink-0 ${isCurriculum ? "bg-purple-500/15 text-purple-300" : "bg-blue-500/15 text-blue-300"}`}>
-                                  {isCurriculum ? "Curriculum" : "Path"}
-                                </span>
+                                <div className="w-20 h-1.5 bg-gray-700 rounded-full overflow-hidden">
+                                  <div className="h-full bg-blue-500 rounded-full transition-all duration-500" style={{ width: `${progress}%` }} />
+                                </div>
+                                <span className="text-xs text-gray-400 w-8 text-right">{progress}%</span>
                               </div>
-                              <p className="text-xs text-gray-500">
-                                {isCurriculum
-                                  ? `${journey.completedCourses ?? 0}/${journey.courseCount ?? 0} courses • ${timeAgo(journey.createdAt)}`
-                                  : `${completedModules}/${journey.modules.length} modules • ${timeAgo(journey.createdAt)}`}
-                              </p>
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className={`text-gray-500 transition-transform ${isExpanded ? "rotate-180" : ""}`} aria-hidden="true">
+                                <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                              </svg>
                             </div>
-                          </div>
-                          <div className="flex items-center gap-4 flex-shrink-0">
-                            <div className="flex items-center gap-2">
-                              <div className="w-20 h-1.5 bg-gray-700 rounded-full overflow-hidden">
-                                <div className="h-full bg-blue-500 rounded-full transition-all duration-500" style={{ width: `${progress}%` }} />
-                              </div>
-                              <span className="text-xs text-gray-400 w-8 text-right">{progress}%</span>
-                            </div>
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className={`text-gray-500 transition-transform ${isExpanded ? "rotate-180" : ""}`}>
-                              <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                            </svg>
-                          </div>
-                        </button>
+                          </button>
+                        )}
 
                         {/* expanded module list */}
                         {isExpanded && (
@@ -854,37 +878,39 @@ function SidebarGroup({
       <p className="px-2 py-1 text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
         {label}
       </p>
-      {filtered.map((journey) => (
-        <button
-          key={journey.id}
-          onClick={() => {
-            if (journey.kind === "curriculum") {
-              window.location.href = `/curriculum/${journey.id}`;
-              return;
-            }
-            const qs = new URLSearchParams({ topic: journey.topic, mode: journey.type === "topic" ? "learn" : "solve" });
-            window.location.href = `/workspace/${journey.id}?${qs.toString()}`;
-          }}
-          className="w-full text-left px-3 py-2 rounded-lg text-xs text-gray-300 hover:bg-[#0f1224] hover:text-white transition flex items-center gap-2 group focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          {journey.kind === "curriculum" ? (
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="flex-shrink-0 text-purple-400 transition">
-              <path d="M4 6h16M4 12h16M4 18h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-            </svg>
-          ) : (
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="flex-shrink-0 text-gray-500 group-hover:text-blue-400 transition">
-              <rect x="3" y="4" width="18" height="16" rx="2" stroke="currentColor" strokeWidth="1.5" />
-              <path d="M7 8h10M7 12h6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-            </svg>
-          )}
-          <span className="truncate flex-1">{journey.topic}</span>
-          {journey.kind === "curriculum" && (
-            <span className="text-[9px] uppercase font-semibold text-purple-300 bg-purple-500/15 px-1.5 py-0.5 rounded-md">
-              Curr
-            </span>
-          )}
-        </button>
-      ))}
+      {filtered.map((journey) => {
+        const href =
+          journey.kind === "curriculum"
+            ? `/curriculum/${journey.id}`
+            : `/workspace/${journey.id}?${new URLSearchParams({
+                topic: journey.topic,
+                mode: journey.type === "topic" ? "learn" : "solve",
+              }).toString()}`;
+        return (
+          <Link
+            key={journey.id}
+            href={href}
+            className="w-full text-left px-3 py-2 rounded-lg text-xs text-gray-300 hover:bg-[#0f1224] hover:text-white transition flex items-center gap-2 group focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            {journey.kind === "curriculum" ? (
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="flex-shrink-0 text-purple-400 transition" aria-hidden="true">
+                <path d="M4 6h16M4 12h16M4 18h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+              </svg>
+            ) : (
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="flex-shrink-0 text-gray-500 group-hover:text-blue-400 transition" aria-hidden="true">
+                <rect x="3" y="4" width="18" height="16" rx="2" stroke="currentColor" strokeWidth="1.5" />
+                <path d="M7 8h10M7 12h6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+              </svg>
+            )}
+            <span className="truncate flex-1">{journey.topic}</span>
+            {journey.kind === "curriculum" && (
+              <span className="text-[9px] uppercase font-semibold text-purple-300 bg-purple-500/15 px-1.5 py-0.5 rounded-md">
+                Curr
+              </span>
+            )}
+          </Link>
+        );
+      })}
     </div>
   );
 }
