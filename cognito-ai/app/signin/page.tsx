@@ -46,7 +46,7 @@ export default function SignIn() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#0b0f1e]">
         <div className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/75">
-          {isAuthenticated ? "Redirecting to dashboard..." : "Loading Cognito.AI..."}
+          {isAuthenticated ? "Redirecting to dashboard..." : "Loading Cognito.ai..."}
         </div>
       </div>
     );
@@ -58,7 +58,7 @@ export default function SignIn() {
         <div className="mb-6 flex items-center justify-between gap-4">
           <div>
             <p className="text-xs uppercase tracking-[0.3em] text-cyan-200/80">
-              Cognito.AI
+              Cognito.ai
             </p>
             <h1 className="mt-2 text-3xl font-bold text-white">Welcome back</h1>
           </div>

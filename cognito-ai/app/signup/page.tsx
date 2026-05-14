@@ -68,7 +68,7 @@ export default function SignUp() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#0b0f1e]">
         <div className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/75">
-          {isAuthenticated ? "Redirecting to dashboard..." : "Loading Cognito.AI..."}
+          {isAuthenticated ? "Redirecting to dashboard..." : "Loading Cognito.ai..."}
         </div>
       </div>
     );
@@ -79,12 +79,12 @@ export default function SignUp() {
       {/* card container */}
       <main className="w-full max-w-sm rounded-2xl bg-[#0f1224] bg-opacity-90 p-8 shadow-2xl">
         <h1 className="text-center text-3xl font-bold text-white pb-5">
-          COGNITO.AI
+          Cognito.ai
         </h1>
         <p className="mt-2 text-center text-sm text-gray-300">
           Create your account<br />
           <span className="text-xs text-gray-400">
-            An AI mentor that actually teaches.
+            Socratic lessons, adaptive roadmaps, and saved progress.
           </span>
         </p>
 
