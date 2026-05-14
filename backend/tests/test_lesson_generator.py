@@ -80,6 +80,9 @@ class LessonGeneratorSkillRunnerTests(unittest.TestCase):
         difficulties = {q["difficulty"] for q in result["questions"]}
         self.assertEqual(difficulties, {"easy", "medium", "hard"})
         mock_post.assert_called_once()
+        payload = mock_post.call_args[1]["json"]
+        user_content = payload["messages"][1]["content"]
+        self.assertIn("Target difficulty: medium", user_content)
 
     @patch.dict("os.environ", {"OPENROUTER_API_KEY": "test-key"})
     @patch("agent.runner.httpx.post")

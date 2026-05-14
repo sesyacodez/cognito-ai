@@ -4,6 +4,7 @@
  * POST /api/lessons/{id}/reset, DELETE /api/lessons/{id}/state.
  */
 
+import { readHttpErrorMessage } from "./apiErrors";
 import { getAuthHeader } from "./auth";
 
 /* ── Types ─────────────────────────────────────── */
@@ -70,7 +71,7 @@ export async function fetchLesson(
     },
   });
   if (!res.ok) {
-    throw new Error(`Failed to fetch lesson: ${res.status}`);
+    throw new Error(await readHttpErrorMessage(res, "Failed to fetch lesson"));
   }
   return res.json();
 }
@@ -89,7 +90,7 @@ export async function submitAnswer(
     body: JSON.stringify({ question_id: questionId, answer }),
   });
   if (!res.ok) {
-    throw new Error(`Failed to submit answer: ${res.status}`);
+    throw new Error(await readHttpErrorMessage(res, "Failed to submit answer"));
   }
   return res.json();
 }
@@ -108,7 +109,7 @@ export async function requestHint(
     body: JSON.stringify({ question_id: questionId, hint_level: hintLevel }),
   });
   if (!res.ok) {
-    throw new Error(`Failed to get hint: ${res.status}`);
+    throw new Error(await readHttpErrorMessage(res, "Failed to get hint"));
   }
   return res.json();
 }
@@ -124,7 +125,7 @@ export async function resetLesson(
     },
   });
   if (!res.ok) {
-    throw new Error(`Failed to reset lesson: ${res.status}`);
+    throw new Error(await readHttpErrorMessage(res, "Failed to reset lesson"));
   }
   return res.json();
 }
@@ -138,6 +139,6 @@ export async function deleteLesson(lessonId: string): Promise<void> {
     },
   });
   if (!res.ok) {
-    throw new Error(`Failed to delete lesson progress: ${res.status}`);
+    throw new Error(await readHttpErrorMessage(res, "Failed to delete lesson progress"));
   }
 }

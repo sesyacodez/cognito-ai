@@ -70,9 +70,11 @@ SPEC = {
 }
 
 # Skill implementation — called by the runner when the model selects this skill
-def run(params: dict, state: dict) -> dict:
+def run(params: dict, mode: str = "learn") -> dict:
     """Executes the skill. Returns result dict."""
 ```
+
+Optional `state: dict | None` may be passed to `run_skill(...)`; for OpenRouter-backed skills the runner appends a capped JSON snippet to the user message for `lesson_generator` and `socratic_tutor` when `state` is non-empty.
 
 ---
 
@@ -106,6 +108,7 @@ def run(params: dict, state: dict) -> dict:
 - **Input:** `student_answer` (string) + `hint_level` (int) + `question_prompt` (string)
 - **Output:** A guiding question or a hint aligned to the current hint level.
 - **Constraints:** Never provide the final answer; always ask a follow-up.
+- **API note:** HTTP lesson endpoints treat `correct` as authoritative from deterministic comparison to the server-side `answer_key`; tutor output is used for `next_prompt` and hints.
 
 ---
 
@@ -115,7 +118,7 @@ def run(params: dict, state: dict) -> dict:
 
 - **Input:** `correctness` (bool) + `hint_usage` (int) + `timing_seconds` (int)
 - **Output:** Updated XP, stars, and lesson state.
-- **Constraints:** Persist updates to Supabase Postgres through the backend API.
+- **Constraints:** Deterministic computation only (`LOCAL = True`); persistence is handled by Django views/services (database or in-memory store), not inside the skill.
 
 ---
 
@@ -124,7 +127,7 @@ def run(params: dict, state: dict) -> dict:
 **File:** `backend/agent/runner.py`
 
 ```python
-def run_skill(skill_name: str, topic: str, state: dict, **kwargs) -> dict:
+def run_skill(skill_name: str, mode: str = "learn", state: dict | None = None, **kwargs) -> dict:
     """
     Loads the skill spec for skill_name, calls OpenRouter with it as a tool,
     invokes the implementation, validates output, and returns the result dict.

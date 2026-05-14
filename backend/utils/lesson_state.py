@@ -3,6 +3,8 @@ Business logic for lesson state transitions, XP calculation, and star management
 Includes safety checks that prevent invalid state transitions.
 """
 
+from utils.answer_grading import is_answer_correct_against_key
+
 
 VALID_TRANSITIONS = {
     "not_started": {"in_progress", "completed"},
@@ -88,19 +90,7 @@ def transition_status(current_status: str, answered_count: int, total_questions:
 
 def evaluate_answer_local(student_answer: str, answer_key: str) -> bool:
     """
-    Basic local evaluation fallback (substring match).
-    In production, the Socratic_Tutor skill (AI) handles this.
+    Basic local evaluation fallback (substring / token overlap).
+    Delegates to utils.answer_grading for a single implementation.
     """
-    student_clean = student_answer.strip().lower()
-    key_clean = answer_key.strip().lower()
-
-    if not student_clean:
-        return False
-
-    if key_clean in student_clean or student_clean in key_clean:
-        return True
-
-    if len(student_clean) > 10 and any(word in student_clean for word in key_clean.split()):
-        return True
-
-    return False
+    return is_answer_correct_against_key(student_answer, answer_key)

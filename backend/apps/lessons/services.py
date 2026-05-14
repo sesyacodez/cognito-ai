@@ -229,6 +229,7 @@ def record_answer_attempt(
         "xp": xp_awarded,
         "star_earned": earned_star,
         "total_stars": state.stars_remaining,
+        "stars_remaining": state.stars_remaining,
         "status": state.status,
     }
 

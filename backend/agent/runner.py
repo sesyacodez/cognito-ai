@@ -5,7 +5,9 @@ and executes the skill the model selects.
 
 import importlib
 import json
+import logging
 import os
+import time
 
 import httpx
 from pydantic import ValidationError
@@ -21,6 +23,23 @@ SKILL_MODEL_MAP = {
     "socratic_tutor": "SOCRATIC_TUTOR_MODEL",
     "progress_updater": "PROGRESS_UPDATER_MODEL",
 }
+
+logger = logging.getLogger(__name__)
+
+_STATE_SNIPPET_MAX_CHARS = 1200
+
+
+def _state_context_snippet(state: dict | None) -> str:
+    """Compact JSON context for the model; never include raw prompts beyond cap."""
+    if not state:
+        return ""
+    try:
+        raw = json.dumps(state, default=str, ensure_ascii=False)
+    except TypeError:
+        return ""
+    if len(raw) > _STATE_SNIPPET_MAX_CHARS:
+        raw = raw[:_STATE_SNIPPET_MAX_CHARS] + "...(truncated)"
+    return f"\n\nContext (JSON):\n{raw}"
 
 
 class AgentError(Exception):
@@ -134,22 +153,23 @@ def run_skill(skill_name: str, mode: str = "learn", state: dict = None, **kwargs
     elif skill_name == "curriculum_planner":
         user_content = f"Broad topic: {kwargs.get('topic', 'General Learning Path')}"
     elif skill_name == "lesson_generator":
-        user_content = f"Module Topic: {kwargs.get('module_topic', 'General Topic')}"
+        target = kwargs.get("target_difficulty", "medium")
+        user_content = (
+            f"Module Topic: {kwargs.get('module_topic', 'General Topic')}\n"
+            f"Target difficulty: {target}"
+        ) + _state_context_snippet(state)
     elif skill_name == "socratic_tutor":
         user_content = (
             f"Question: {kwargs.get('question_prompt', '')}\n"
             f"Student Answer: {kwargs.get('student_answer', '')}\n"
             f"Hint Level: {kwargs.get('hint_level', 0)}"
-        )
+        ) + _state_context_snippet(state)
 
     messages = [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_content},
     ]
-    
-    # If state is provided, we could inject it as a developer/system message or user context
-    # For now, we'll just keep it available for the skill.run() implementation if needed.
-    
+
     tools = [skill.SPEC]
 
     last_error: AgentError | None = None
@@ -168,14 +188,32 @@ def run_skill(skill_name: str, mode: str = "learn", state: dict = None, **kwargs
                     ),
                 }
             ]
+        t0 = time.perf_counter()
         try:
             response = _call_openrouter(retry_messages, tools, api_key, model, skill_name)
             params = _extract_tool_args(response, skill_name)
-            
+
             # Implementation call allows passing state and mode
             result = skill.run(params, mode=mode)
+            elapsed_ms = int((time.perf_counter() - t0) * 1000)
+            logger.info(
+                "openrouter_ok skill=%s model=%s attempt=%s duration_ms=%s",
+                skill_name,
+                model,
+                attempt + 1,
+                elapsed_ms,
+            )
             return result
         except (AgentError, ValidationError) as exc:
+            elapsed_ms = int((time.perf_counter() - t0) * 1000)
+            logger.warning(
+                "openrouter_fail skill=%s model=%s attempt=%s duration_ms=%s exc_type=%s",
+                skill_name,
+                model,
+                attempt + 1,
+                elapsed_ms,
+                type(exc).__name__,
+            )
             last_error = AgentError(str(exc))
             continue
 

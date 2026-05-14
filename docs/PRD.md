@@ -54,8 +54,8 @@ The project uses an OpenRouter-backed **agentic skill runner** in the Django bac
 
 - Decomposer: Analyzes the input topic and returns a structured JSON roadmap.
 - Lesson_Generator: Generates theory and questions for a specific subtopic.
-- Socratic_Tutor: Evaluates student input and decides whether to provide a hint or advance the user.
-- Progress_Updater: Updates the Supabase Postgres database with the user's latest performance stats.
+- Socratic_Tutor: Produces guiding `next_prompt` text and hints; lesson APIs set `correct` from deterministic comparison to the stored `answer_key`.
+- Progress_Updater: Computes XP/stars/status from correctness and hint usage. Implemented as a **local deterministic** skill (`LOCAL = True` in `backend/skills/progress_updater.py`); Django views persist results via the ORM or in-memory progress store rather than inside the skill itself.
 
 ## 7. Page-by-Page Requirements
 
@@ -67,5 +67,5 @@ The project uses an OpenRouter-backed **agentic skill runner** in the Django bac
 ## 8. Data Schema (Supabase Postgres via Django ORM)
 
 - User Profile: Links Firebase UID to local user data.
-- Roadmap: Stores the overarching topic and the 5 generated subtopic modules.
+- Roadmap: Stores the topic and generated learning modules (count is adaptive; not fixed at five).
 - Lesson State: Tracks which questions were answered, how many hints were used, and the final star rating.

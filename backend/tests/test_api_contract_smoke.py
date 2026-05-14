@@ -299,7 +299,7 @@ class ApiContractSmokeTests(TestCase):
 
         response = self.client.post(
             "/api/lessons/test-lesson-123/answer",
-            data=json.dumps({"question_id": question_id, "answer": "A loop repeats code."}),
+            data=json.dumps({"question_id": question_id, "answer": "Answer 1"}),
             content_type="application/json",
             **self.lesson_headers,
         )
@@ -377,7 +377,7 @@ class ApiContractSmokeTests(TestCase):
 
         answer_response = self.client.post(
             "/api/lessons/persisted-lesson/answer",
-            data=json.dumps({"question_id": question_id, "answer": "A loop repeats code."}),
+            data=json.dumps({"question_id": question_id, "answer": "Answer 1"}),
             content_type="application/json",
             **self.lesson_headers,
         )
@@ -439,7 +439,7 @@ class ApiContractSmokeTests(TestCase):
 
     def test_dashboard_get_returns_contract_shape(self):
         """GET /api/dashboard returns expected top-level keys."""
-        response = self.client.get("/api/dashboard")
+        response = self.client.get("/api/dashboard", **self.auth_headers)
         self.assertEqual(response.status_code, 200)
         payload = response.json()
         self.assertIn("total_xp", payload)

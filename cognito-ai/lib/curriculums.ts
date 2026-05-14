@@ -3,6 +3,7 @@
  * fetching curricula, and expanding courses on demand.
  */
 
+import { readHttpErrorMessage } from "./apiErrors";
 import { getAuthHeader } from "./auth";
 
 /* ── Types ─────────────────────────────────────── */
@@ -106,7 +107,7 @@ export async function createJourney(
   });
 
   if (!res.ok) {
-    throw new Error(`Failed to create journey: ${res.status}`);
+    throw new Error(await readHttpErrorMessage(res, "Failed to create journey"));
   }
 
   return res.json();
@@ -135,7 +136,7 @@ export async function confirmCurriculum(
   });
 
   if (!res.ok) {
-    throw new Error(`Failed to create curriculum: ${res.status}`);
+    throw new Error(await readHttpErrorMessage(res, "Failed to create curriculum"));
   }
 
   return res.json();
@@ -150,7 +151,7 @@ export async function fetchCurriculum(curriculumId: string): Promise<Curriculum>
   });
 
   if (!res.ok) {
-    throw new Error(`Failed to fetch curriculum: ${res.status}`);
+    throw new Error(await readHttpErrorMessage(res, "Failed to fetch curriculum"));
   }
 
   return res.json();
@@ -165,7 +166,7 @@ export async function listCurriculums(): Promise<Curriculum[]> {
   });
 
   if (!res.ok) {
-    throw new Error(`Failed to list curriculums: ${res.status}`);
+    throw new Error(await readHttpErrorMessage(res, "Failed to list curriculums"));
   }
 
   return res.json();
@@ -187,7 +188,7 @@ export async function expandCourse(
   );
 
   if (!res.ok) {
-    throw new Error(`Failed to expand course: ${res.status}`);
+    throw new Error(await readHttpErrorMessage(res, "Failed to expand course"));
   }
 
   return res.json();
