@@ -44,20 +44,36 @@ def get_user_for_session_token(token: str):
 
 
 def resolve_user_from_bearer_token(token: str, *, allow_firebase_fallback: bool = False):
+    """
+    Resolve a User from an Authorization bearer value.
+
+    Accepts Django session tokens (``session-...``) from password / exchanged
+    Firebase login, and — when the client fell back to storing the raw
+    Firebase UID (see frontend sync when ``/api/auth/firebase-login`` fails)
+    — resolves existing users by ``users.firebase_uid`` even if
+    ``allow_firebase_fallback`` is false, so lesson progress uses the ORM
+    instead of the anonymous in-memory store.
+    """
     user = get_user_for_session_token(token)
     if user is not None:
         return user
-
-    if not allow_firebase_fallback:
-        return None
 
     normalized_token = str(token).strip()
     if not normalized_token:
         return None
 
-    fallback_user = User.objects.filter(firebase_uid=normalized_token).first()
-    if fallback_user is not None:
-        return fallback_user
+    # Raw Firebase UID used as bearer (offline / failed token exchange).
+    if not normalized_token.lower().startswith("session-"):
+        user = User.objects.filter(firebase_uid=normalized_token).first()
+        if user is not None:
+            return user
+
+    if not allow_firebase_fallback:
+        return None
+
+    # Do not upsert arbitrary strings that look like broken session material.
+    if normalized_token.lower().startswith("session-"):
+        return None
 
     return User.objects.upsert_firebase_user(
         uid=normalized_token,

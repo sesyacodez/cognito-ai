@@ -4,6 +4,7 @@ from unittest.mock import patch
 from django.test import TestCase, override_settings
 
 from apps.auth.models import SessionToken
+from apps.auth.services import resolve_user_from_bearer_token
 from apps.users.models import User
 from utils.auth_stub_store import reset_auth_store
 from utils.firebase_auth import FirebaseAuthError
@@ -192,3 +193,40 @@ class AuthStubTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 400)
+
+    @patch(
+        "apps.auth.views.verify_firebase_token",
+        return_value={
+            "uid": "firebase-uid-stable",
+            "email": "stable@example.com",
+            "name": "Stable User",
+        },
+    )
+    def test_resolve_bearer_finds_user_by_firebase_uid_without_stub_fallback(self, _mock_verify):
+        """Frontend may store Firebase UID as bearer when session exchange failed once."""
+        login_res = self.client.post(
+            "/api/auth/firebase-login",
+            data=json.dumps({"id_token": "any"}),
+            content_type="application/json",
+        )
+        self.assertEqual(login_res.status_code, 200)
+
+        with override_settings(AUTH_STUB_ALLOW_FIREBASE_FALLBACK=False):
+            user = resolve_user_from_bearer_token(
+                "firebase-uid-stable",
+                allow_firebase_fallback=False,
+            )
+
+        self.assertIsNotNone(user)
+        self.assertEqual(user.email, "stable@example.com")
+
+    @override_settings(AUTH_STUB_ALLOW_FIREBASE_FALLBACK=True)
+    def test_resolve_bearer_does_not_upsert_garbage_session_prefix_under_fallback(self):
+        """Invalid session-shaped tokens must not create synthetic Firebase users."""
+        before = User.objects.count()
+        user = resolve_user_from_bearer_token(
+            "session-not-a-real-token",
+            allow_firebase_fallback=True,
+        )
+        self.assertIsNone(user)
+        self.assertEqual(User.objects.count(), before)
